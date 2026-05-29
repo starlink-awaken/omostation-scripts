@@ -162,13 +162,13 @@ restore_databases() {
     
     # 恢复agora.db
     if [ "$SERVICES" = "all" ] || [[ ",$SERVICES," == *,agora,* ]]; then
-        restore_file "$BACKUP_DIR/agora.db" "$WORKSPACE/agora/agora.db"
+        restore_file "$BACKUP_DIR/agora.db" "$WORKSPACE/projects/kairon/packages/agora/agora.db"
         db_restored=true
     fi
     
     # 恢复agentmesh.db
     if [ "$SERVICES" = "all" ] || [[ ",$SERVICES," == *,agentmesh,* ]]; then
-        restore_file "$BACKUP_DIR/agentmesh.db" "$WORKSPACE/agentmesh/data/gateway.db"
+        restore_file "$BACKUP_DIR/agentmesh.db" "$WORKSPACE/projects/agentmesh/data/gateway.db"
         db_restored=true
     fi
     
@@ -182,7 +182,7 @@ restore_vector_db() {
     echo "--- 恢复向量数据库 ---"
     
     if [ "$SERVICES" = "all" ] || [[ ",$SERVICES," == *,minerva,* ]]; then
-        restore_dir "$BACKUP_DIR/lancedb" "$WORKSPACE/minerva/data/lancedb"
+        restore_dir "$BACKUP_DIR/lancedb" "$WORKSPACE/projects/kairon/packages/minerva/data/lancedb"
         echo "  ✅ 向量数据库恢复完成"
     else
         echo "  跳过向量数据库恢复"
@@ -193,14 +193,9 @@ restore_vector_db() {
 restore_user_data() {
     echo "--- 恢复用户数据 ---"
     
-    # 恢复workspace数据
-    if [ -d "$BACKUP_DIR/user-data" ]; then
-        restore_dir "$BACKUP_DIR/user-data/workspace" "$WORKSPACE/workspace/data"
-    fi
-    
     # 恢复Forge数据
     if [ -d "$BACKUP_DIR/forge-data" ]; then
-        restore_dir "$BACKUP_DIR/forge-data" "$WORKSPACE/Forge"
+        restore_dir "$BACKUP_DIR/forge-data" "$WORKSPACE/projects/kairon/packages/forge"
     fi
     
     echo "  ✅ 用户数据恢复完成"
@@ -212,7 +207,7 @@ restart_services() {
     
     if [ "$DRY_RUN" = true ]; then
         echo "  [DRY-RUN] 重启所有服务"
-        echo "  [DRY-RUN] docker-compose restart"
+        echo "  [DRY-RUN] docker compose restart"
         return 0
     fi
     
@@ -220,11 +215,11 @@ restart_services() {
     
     # 停止现有服务
     echo "  停止现有服务..."
-    docker-compose down 2>/dev/null || true
+    docker compose down 2>/dev/null || true
     
     # 启动服务
     echo "  启动服务..."
-    docker-compose up -d
+    docker compose up -d
     
     # 等待服务启动
     echo "  等待服务启动..."
@@ -232,7 +227,7 @@ restart_services() {
     
     # 检查服务状态
     echo "  检查服务状态..."
-    docker-compose ps
+    docker compose ps
     
     echo "  ✅ 服务重启完成"
 }
@@ -301,8 +296,8 @@ echo "恢复状态: $([ $ERROR_COUNT -eq 0 ] && echo '✅ 成功' || echo '❌ �
 if [ $ERROR_COUNT -eq 0 ]; then
     echo ""
     echo "后续操作:"
-    echo "  1. 验证服务状态: cd $WORKSPACE && docker-compose ps"
-    echo "  2. 检查服务日志: docker-compose logs"
+    echo "  1. 验证服务状态: cd $WORKSPACE && docker compose ps"
+    echo "  2. 检查服务日志: docker compose logs"
     echo "  3. 测试关键功能: workspace research test"
     echo "  4. 监控系统状态: curl localhost:7430/health"
     exit 0

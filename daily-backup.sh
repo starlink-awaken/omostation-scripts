@@ -49,13 +49,13 @@ backup_dir() {
 
 # 备份SQLite数据库
 echo "--- SQLite数据库备份 ---"
-backup_file "$WORKSPACE/agora/agora.db" "$BACKUP_DIR/agora.db"
-backup_file "$WORKSPACE/agentmesh/data/gateway.db" "$BACKUP_DIR/agentmesh.db" 2>/dev/null || true
+backup_file "$WORKSPACE/projects/kairon/packages/agora/agora.db" "$BACKUP_DIR/agora.db"
+backup_file "$WORKSPACE/projects/agentmesh/data/gateway.db" "$BACKUP_DIR/agentmesh.db" 2>/dev/null || true
 
 # 备份向量数据库
 echo ""
 echo "--- 向量数据库备份 ---"
-backup_dir "$WORKSPACE/minerva/data/lancedb" "$BACKUP_DIR/lancedb"
+backup_dir "$WORKSPACE/projects/kairon/packages/minerva/data/lancedb" "$BACKUP_DIR/lancedb" 2>/dev/null || true
 
 # 备份配置文件
 echo ""
@@ -63,10 +63,11 @@ echo "--- 配置文件备份 ---"
 CONFIG_TAR="$BACKUP_DIR/configs.tar.gz"
 tar -czf "$CONFIG_TAR" \
     -C "$WORKSPACE" \
-    agentmesh/config/*.yaml \
-    agora/*.yaml \
-    minerva/config/*.yaml \
-    ontoderive/*.yaml \
+    projects/agentmesh/config/*.yaml \
+    projects/kairon/packages/agora/*.yaml \
+    projects/kairon/packages/minerva/config/*.yaml \
+    projects/kairon/packages/ontoderive/*.yaml \
+    projects/SharedBrain/config/*.yaml \
     2>/dev/null || echo "  ⚠️  配置文件备份失败"
 
 if [ -f "$CONFIG_TAR" ]; then
@@ -104,8 +105,7 @@ fi
 # 备份用户数据
 echo ""
 echo "--- 用户数据备份 ---"
-backup_dir "$WORKSPACE/workspace/data" "$BACKUP_DIR/user-data" 2>/dev/null || true
-backup_dir "$WORKSPACE/Forge" "$BACKUP_DIR/forge-data" 2>/dev/null || true
+backup_dir "$WORKSPACE/projects/kairon/packages/forge" "$BACKUP_DIR/forge-data" 2>/dev/null || true
 
 # 生成备份清单
 echo ""
