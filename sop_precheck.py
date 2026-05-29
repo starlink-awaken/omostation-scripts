@@ -23,13 +23,13 @@ from pathlib import Path
 
 # ── 已知的 MCP server 文件（与 sop_check_format_version.py 同步） ──
 KNOWN_MCP_FILES = [
-    "agora/src/agora/server/mcp.py",
-    "codeanalyze/src/codeanalyze/mcp.py",
-    "iris/src/iris/mcp_server.py",
-    "kronos/src/kronos/mcp_server.py",
-    "minerva/src/minerva/mcp_server/server.py",
-    "sophia/src/sophia/server/mcp_server.py",
-    "SharedBrain/organs/D_Gateway/mcp_server/server.py",
+    "projects/kairon/packages/agora/src/agora/server/mcp.py",
+    "projects/kairon/packages/codeanalyze/src/codeanalyze/mcp.py",
+    "projects/kairon/packages/iris/src/iris/mcp_server.py",
+    "projects/kairon/packages/kronos/src/kronos/mcp_server.py",
+    "projects/kairon/packages/minerva/src/minerva/mcp_server/server.py",
+    "projects/kairon/packages/sophia/src/sophia/server/mcp_server.py",
+    "projects/SharedBrain/organs/D_Gateway/mcp_server/server.py",
 ]
 
 

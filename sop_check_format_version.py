@@ -19,13 +19,13 @@ from pathlib import Path
 
 # ── 已知的 MCP server 文件（默认回退，当 convergence.yaml 不存在时使用） ──
 KNOWN_MCP_FILES = [
-    "agora/src/agora/server/mcp.py",
-    "codeanalyze/src/codeanalyze/mcp.py",
-    "iris/src/iris/mcp_server.py",
-    "kronos/src/kronos/mcp_server.py",
-    "minerva/src/minerva/mcp_server/server.py",
-    "sophia/src/sophia/server/mcp_server.py",
-    "SharedBrain/organs/D_Gateway/mcp_server/server.py",
+    "projects/kairon/packages/agora/src/agora/server/mcp.py",
+    "projects/kairon/packages/codeanalyze/src/codeanalyze/mcp.py",
+    "projects/kairon/packages/iris/src/iris/mcp_server.py",
+    "projects/kairon/packages/kronos/src/kronos/mcp_server.py",
+    "projects/kairon/packages/minerva/src/minerva/mcp_server/server.py",
+    "projects/kairon/packages/sophia/src/sophia/server/mcp_server.py",
+    "projects/SharedBrain/organs/D_Gateway/mcp_server/server.py",
 ]
 
 
@@ -47,7 +47,7 @@ def _discover_from_convergence() -> list[str]:
         文件路径列表（workspace 相对路径字符串）。
     """
     ws = _find_workspace_root()
-    yaml_path = ws / "gateway" / "scripts" / "convergence.yaml"
+    yaml_path = ws / "projects" / "kairon" / "packages" / "gateway" / "scripts" / "convergence.yaml"
 
     try:
         import yaml  # type: ignore[import-untyped]  # noqa: PLC0415
