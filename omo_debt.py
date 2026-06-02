@@ -595,6 +595,22 @@ def reporting_diff_outputs(omo_dir: Path) -> None:
     )
 
 
+def _reporting_trend_owner_inputs(trend_packet: dict[str, object], omo_dir: Path) -> dict[str, dict[str, object]]:
+    packets: dict[str, dict[str, object]] = {}
+    for entry in trend_packet["runs"]:
+        reporting_ref = entry.get("reporting_ref")
+        if reporting_ref is None:
+            continue
+        reporting_path = omo_dir.parent / str(reporting_ref)
+        if not reporting_path.exists():
+            raise FileNotFoundError(f"missing reporting artifact for owner trend: {reporting_path}")
+        reporting_packet = _load_yaml(reporting_path)
+        if not reporting_packet:
+            raise ValueError(f"empty reporting artifact for owner trend: {reporting_path}")
+        packets[str(entry["run_stamp"])] = reporting_packet
+    return packets
+
+
 def reporting_trend_outputs(
     omo_dir: Path,
     window_requested: int | None = None,
@@ -606,11 +622,23 @@ def reporting_trend_outputs(
         raise ValueError("--last cannot be combined with --from-run-stamp or --to-run-stamp")
     if (from_run_stamp_requested is None) != (to_run_stamp_requested is None):
         raise ValueError("range mode requires both from-run-stamp and to-run-stamp")
+    trend_packet = build_reporting_trend_packet(
+        generated_at=_timestamp(),
+        history_packet=history_packet,
+        window_requested=window_requested,
+        from_run_stamp_requested=from_run_stamp_requested,
+        to_run_stamp_requested=to_run_stamp_requested,
+    )
+    if trend_packet["trend_status"] == "insufficient_history":
+        write_reporting_trend_packet(omo_dir, trend_packet)
+        return
+    reporting_packets_by_run = _reporting_trend_owner_inputs(trend_packet, omo_dir)
     write_reporting_trend_packet(
         omo_dir,
         build_reporting_trend_packet(
-            generated_at=_timestamp(),
+            generated_at=trend_packet["generated_at"],
             history_packet=history_packet,
+            reporting_packets_by_run=reporting_packets_by_run,
             window_requested=window_requested,
             from_run_stamp_requested=from_run_stamp_requested,
             to_run_stamp_requested=to_run_stamp_requested,
