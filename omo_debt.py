@@ -25,6 +25,7 @@ try:
     from scripts.omo_debt_reporting import build_reporting_packet, render_reporting_markdown
     from scripts.omo_debt_reporting_diff import build_reporting_diff_packet, render_reporting_diff_markdown
     from scripts.omo_debt_reporting_history import build_reporting_history_packet, render_reporting_history_markdown
+    from scripts.omo_debt_reporting_trend import build_reporting_trend_packet, render_reporting_trend_markdown
     from scripts.omo_debt_registry import DebtItem, load_debt_ledger
     from scripts.omo_debt_review_queue import build_review_queue
 except ModuleNotFoundError:
@@ -45,6 +46,7 @@ except ModuleNotFoundError:
     from omo_debt_reporting import build_reporting_packet, render_reporting_markdown
     from omo_debt_reporting_diff import build_reporting_diff_packet, render_reporting_diff_markdown
     from omo_debt_reporting_history import build_reporting_history_packet, render_reporting_history_markdown
+    from omo_debt_reporting_trend import build_reporting_trend_packet, render_reporting_trend_markdown
     from omo_debt_registry import DebtItem, load_debt_ledger
     from omo_debt_review_queue import build_review_queue
 
@@ -385,6 +387,15 @@ def write_reporting_diff_packet(omo_dir: Path, diff_packet: dict[str, object]) -
     current_md_path.write_text(markdown, encoding="utf-8")
 
 
+def write_reporting_trend_packet(omo_dir: Path, trend_packet: dict[str, object]) -> None:
+    trend_dir = omo_dir / "debt" / "reporting" / "trend"
+    markdown = render_reporting_trend_markdown(trend_packet)
+    _write_yaml(trend_dir / "current.yaml", trend_packet)
+    current_md_path = trend_dir / "current.md"
+    current_md_path.parent.mkdir(parents=True, exist_ok=True)
+    current_md_path.write_text(markdown, encoding="utf-8")
+
+
 def load_reporting_history_packet(omo_dir: Path) -> dict[str, object]:
     history_path = omo_dir / "debt" / "reporting" / "history" / "current.yaml"
     if not history_path.exists():
@@ -577,6 +588,17 @@ def reporting_diff_outputs(omo_dir: Path) -> None:
     )
 
 
+def reporting_trend_outputs(omo_dir: Path) -> None:
+    history_packet = load_reporting_history_packet(omo_dir)
+    write_reporting_trend_packet(
+        omo_dir,
+        build_reporting_trend_packet(
+            generated_at=_timestamp(),
+            history_packet=history_packet,
+        ),
+    )
+
+
 def require_dispatch_bound_revalidate(
     omo_dir: Path,
     item_id: str,
@@ -705,6 +727,9 @@ def main() -> int:
     report_diff_parser = subparsers.add_parser("report-diff")
     report_diff_parser.add_argument("--omo-dir", default=".omo")
 
+    report_trend_parser = subparsers.add_parser("report-trend")
+    report_trend_parser.add_argument("--omo-dir", default=".omo")
+
     reclassify_parser = subparsers.add_parser("reclassify")
     reclassify_parser.add_argument("--omo-dir", default=".omo")
     reclassify_parser.add_argument("--id", required=True)
@@ -780,6 +805,11 @@ def main() -> int:
     if args.command == "report-diff":
         reporting_diff_outputs(omo_dir)
         print("generated debt reporting diff packet")
+        return 0
+
+    if args.command == "report-trend":
+        reporting_trend_outputs(omo_dir)
+        print("generated debt reporting trend packet")
         return 0
 
     if args.command == "reclassify":
