@@ -220,6 +220,9 @@ def _state_progress_run(
     pending_approval = int(state_counts["pending_approval"])
     executed = int(run["executed_item_count"])
     ready_to_execute = int(run["total_items"]) - pending_approval - executed
+    artifact_ready_to_execute = int(state_counts["ready_to_execute"])
+    if artifact_ready_to_execute != ready_to_execute:
+        raise ValueError(f"invalid state progress counts for run: {run['run_stamp']}")
     return {
         "run_stamp": run["run_stamp"],
         "pending_approval": pending_approval,
