@@ -148,6 +148,35 @@ def _dispatch_allowed_write_paths(task: dict) -> list[str]:
     return paths
 
 
+def _launch_worker_from_prompt(
+    root: Path,
+    registry: dict,
+    worker_id: str,
+    transport: str,
+    prompt_path: Path,
+    stdout_path: Path,
+) -> str:
+    prompt_text = prompt_path.read_text(encoding="utf-8")
+    argv = _build_launch_argv(registry, worker_id, transport, prompt_text)
+    result = subprocess.run(argv, cwd=root, capture_output=True, text=True)
+    output = redact_sensitive_text((result.stdout or "") + (result.stderr or ""))
+    write_text_atomic(stdout_path, output)
+    return output
+
+
+def _launch_existing_dispatch(root: Path, dispatch_path: Path, *, omo_dir: str | Path = ".omo") -> dict[str, object]:
+    dispatch = _load_yaml(dispatch_path)
+    registry = _load_yaml(_omo_path(root, omo_dir) / "workers" / "registry.yaml")
+    prompt_path = root / dispatch["execution"]["prompt_file"]
+    stdout_path = root / dispatch["execution"]["log_ref"]
+    _launch_worker_from_prompt(root, registry, str(dispatch["worker_id"]), str(dispatch["transport_mode"]), prompt_path, stdout_path)
+    dispatch["dispatch_state"] = "active"
+    dispatch.setdefault("lease", {})
+    dispatch["lease"]["last_material_write_at"] = _utc_now()
+    _write_yaml(dispatch_path, dispatch)
+    return dispatch
+
+
 def _append_unique(items: list[str], values: list[str]) -> list[str]:
     result = list(items)
     for value in values:
@@ -1139,6 +1168,25 @@ def _write_task_governance_overlay_run_next(
                     target["detail"] = "active pending task was preclaimed into worker dispatch flow"
                     break
             run["summary"] = "dispatched"
+        elif str(run.get("next_action_before_run", "")).startswith("contract:"):
+            task_id = str(run["next_action_before_run"]).split(":", 1)[1]
+            for target in run["target_results"]:
+                if target.get("task_id") == task_id:
+                    target["result"] = "contract_gap"
+                    target["detail"] = "task must declare explicit deliverables/write scope before autonomous launch"
+                    break
+            run["summary"] = "contract_gap"
+        elif str(run.get("next_action_before_run", "")).startswith("launch:"):
+            task_id = str(run["next_action_before_run"]).split(":", 1)[1]
+            task = _load_yaml(_find_task_file(omo / "tasks" / "active", task_id))
+            dispatch = _launch_existing_dispatch(root, root / task["run_ref"], omo_dir=omo_dir)
+            for target in run["target_results"]:
+                if target.get("task_id") == task_id:
+                    target["result"] = "launched"
+                    target["dispatch_state"] = dispatch["dispatch_state"]
+                    target["detail"] = "dispatched task was launched through the stored worker prompt"
+                    break
+            run["summary"] = "launched"
         elif str(run.get("next_action_before_run", "")).startswith("verify:"):
             task_id = str(run["next_action_before_run"]).split(":", 1)[1]
             for target in run["target_results"]:
