@@ -1,0 +1,622 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+from pathlib import Path
+
+import yaml
+
+try:
+    from scripts.omo_debt_approval import (
+        APPROVAL_SCOPE_EXECUTE_REVALIDATE,
+        approval_current_path,
+        build_approval_record,
+        dispatch_entry_requires_approval,
+        find_dispatch_entry,
+        approval_paths,
+    )
+    from scripts.omo_debt_action_packet import build_action_packet
+    from scripts.omo_debt_dispatch import build_dispatch_packet
+    from scripts.omo_debt_execution import build_execution_record, execution_record_path
+    from scripts.omo_debt_metrics import compute_debt_metrics
+    from scripts.omo_debt_owner_routing import build_owner_routing_packet
+    from scripts.omo_debt_registry import DebtItem, load_debt_ledger
+    from scripts.omo_debt_review_queue import build_review_queue
+except ModuleNotFoundError:
+    from omo_debt_approval import (
+        APPROVAL_SCOPE_EXECUTE_REVALIDATE,
+        approval_current_path,
+        build_approval_record,
+        dispatch_entry_requires_approval,
+        find_dispatch_entry,
+        approval_paths,
+    )
+    from omo_debt_action_packet import build_action_packet
+    from omo_debt_dispatch import build_dispatch_packet
+    from omo_debt_execution import build_execution_record, execution_record_path
+    from omo_debt_metrics import compute_debt_metrics
+    from omo_debt_owner_routing import build_owner_routing_packet
+    from omo_debt_registry import DebtItem, load_debt_ledger
+    from omo_debt_review_queue import build_review_queue
+
+
+def _timestamp() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _load_yaml(path: Path) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def _write_yaml(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+
+def append_history(payload: dict, action: str, note: str) -> None:
+    payload.setdefault("history", []).append(
+        {
+            "at": _timestamp(),
+            "action": action,
+            "note": note,
+        }
+    )
+
+
+def _parse_iso8601(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def register_item(args: argparse.Namespace) -> dict:
+    payload = {
+        "id": args.id,
+        "title": args.title,
+        "dimension": args.dimension,
+        "subdimension": args.subdimension,
+        "domain": "workspace",
+        "scope": "governance_kernel",
+        "severity": args.severity,
+        "weight": 0.05,
+        "entropy_class": "classification",
+        "lifecycle_state": "identified",
+        "owner": args.owner,
+        "affected_roots": [".omo"],
+        "evidence_refs": [],
+        "mitigation_refs": [],
+        "opened_at": _timestamp(),
+        "last_reviewed_at": None,
+        "next_review_at": None,
+        "gate_level": "none",
+        "history": [],
+    }
+    append_history(payload, "register", f"Registered debt item {args.id}.")
+    return payload
+
+
+def append_registry_ref(omo_dir: Path, item_ref: str) -> None:
+    registry_path = omo_dir / "debt" / "registry.yaml"
+    registry = _load_yaml(registry_path)
+    refs = list(registry.get("seed_items", []))
+    if item_ref not in refs:
+        refs.append(item_ref)
+    registry["seed_items"] = refs
+    _write_yaml(registry_path, registry)
+
+
+def schedule_item(omo_dir: Path, item_id: str, next_review_at: str) -> None:
+    item_path = omo_dir / "debt" / "items" / f"{item_id}.yaml"
+    payload = _load_yaml(item_path)
+    payload["lifecycle_state"] = "scheduled"
+    payload["next_review_at"] = next_review_at
+    append_history(payload, "schedule", f"Next review set to {next_review_at}.")
+    _write_yaml(item_path, payload)
+
+
+def update_item(omo_dir: Path, item_id: str) -> tuple[Path, dict]:
+    item_path = omo_dir / "debt" / "items" / f"{item_id}.yaml"
+    return item_path, _load_yaml(item_path)
+
+
+def classify_review_sections(items: tuple[DebtItem, ...]) -> dict[str, list[str]]:
+    sections = {
+        "newly_registered": [],
+        "closed": [],
+        "drifted": [],
+        "escalated": [],
+        "reopened": [],
+    }
+    for item in items:
+        actions = [entry["action"] for entry in item.history]
+        if "register" in actions:
+            sections["newly_registered"].append(item.id)
+        if "close" in actions or item.lifecycle_state == "closed":
+            sections["closed"].append(item.id)
+        if item.entropy_class in {"pointer", "time"} and item.lifecycle_state != "closed":
+            sections["drifted"].append(item.id)
+        if "escalate" in actions or item.gate_level == "gate":
+            sections["escalated"].append(item.id)
+        if "reopen" in actions:
+            sections["reopened"].append(item.id)
+    return sections
+
+
+def write_dashboard(omo_dir: Path, metrics, review_queue: dict[str, object], now: str) -> None:
+    due_now = review_queue["due_now"]
+    upcoming = review_queue["upcoming"]
+    payload = {
+        "generated_at": now,
+        "debt_metrics": {
+            "debt_health": metrics.debt_health,
+            "classification_entropy": metrics.classification_entropy,
+            "state_entropy": metrics.state_entropy,
+            "pointer_entropy": metrics.pointer_entropy,
+            "time_entropy": metrics.time_entropy,
+            "backlog_pressure": metrics.backlog_pressure,
+            "coupling_load": metrics.coupling_load,
+        },
+        "watchlist_item_ids": list(metrics.watchlist_item_ids),
+        "gate_item_ids": list(metrics.gate_item_ids),
+        "overdue_review_count": len(due_now),
+        "overdue_review_item_ids": [entry["id"] for entry in due_now],
+        "next_review_queue": [
+            {"id": entry["id"], "next_review_at": entry["next_review_at"]}
+            for entry in upcoming
+        ],
+    }
+    _write_yaml(omo_dir / "debt" / "dashboard" / "current.yaml", payload)
+
+
+def _render_section(title: str, item_ids: list[str]) -> str:
+    lines = [f"## {title}", ""]
+    if item_ids:
+        lines.extend([f"- `{item_id}`" for item_id in item_ids])
+    else:
+        lines.append("- none")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_queue_section(title: str, entries: list[dict[str, object]], reason_key: str) -> str:
+    lines = [f"## {title}", ""]
+    if entries:
+        for entry in entries:
+            reason = entry.get(reason_key, "n/a")
+            next_review = entry.get("next_review_at") or "unscheduled"
+            lines.append(f"- `{entry['id']}` — {reason} ({next_review})")
+    else:
+        lines.append("- none")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_review_queue(omo_dir: Path, review_queue: dict[str, object]) -> None:
+    _write_yaml(omo_dir / "debt" / "review-queue" / "current.yaml", review_queue)
+
+
+def _render_action_packet_section(title: str, entries: list[dict[str, object]]) -> str:
+    lines = [f"## {title}", ""]
+    if entries:
+        for entry in entries:
+            lines.append(f"- `{entry['id']}` — {entry['reason']} — `{entry['suggested_command']}`")
+    else:
+        lines.append("- none")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_action_packet(omo_dir: Path, action_packet: dict[str, object]) -> None:
+    _write_yaml(omo_dir / "debt" / "action-packet" / "current.yaml", action_packet)
+
+    lanes = action_packet["lanes"]
+    markdown = "\n".join(
+        [
+            f"# Debt Action Packet\n\nGenerated at: {action_packet['generated_at']}\n",
+            _render_action_packet_section("Revalidate Now", lanes["revalidate_now"]),
+            _render_action_packet_section("Schedule Now", lanes["schedule_now"]),
+            _render_action_packet_section("Escalate Now", lanes["escalate_now"]),
+            _render_action_packet_section("Continue Mitigation", lanes["continue_mitigation"]),
+            _render_action_packet_section("Watch Only", lanes["watch_only"]),
+        ]
+    )
+    path = omo_dir / "debt" / "action-packet" / "current.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(markdown, encoding="utf-8")
+
+
+def _render_owner_routing_section(owner_packet: dict[str, object]) -> str:
+    lines = [f"## Owner: {owner_packet['owner']}", ""]
+    lines.append(
+        "Summary: "
+        f"{owner_packet['summary']['total_count']} items; "
+        f"revalidate_now={owner_packet['summary']['lane_counts']['revalidate_now']}, "
+        f"schedule_now={owner_packet['summary']['lane_counts']['schedule_now']}, "
+        f"escalate_now={owner_packet['summary']['lane_counts']['escalate_now']}"
+    )
+    lines.append("")
+
+    for lane_title, lane_name in [
+        ("Revalidate Now", "revalidate_now"),
+        ("Schedule Now", "schedule_now"),
+        ("Escalate Now", "escalate_now"),
+        ("Continue Mitigation", "continue_mitigation"),
+        ("Watch Only", "watch_only"),
+    ]:
+        lane_entries = [entry for entry in owner_packet["entries"] if entry["primary_lane"] == lane_name]
+        if not lane_entries:
+            continue
+        lines.extend([f"### {lane_title}", ""])
+        for entry in lane_entries:
+            flags = ", ".join(entry["priority_flags"]) or "none"
+            lines.append(f"- `{entry['id']}` — {entry['reason']} — flags: {flags} — `{entry['shell_command']}`")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def write_owner_routing(omo_dir: Path, owner_routing: dict[str, object]) -> None:
+    _write_yaml(omo_dir / "debt" / "owner-routing" / "current.yaml", owner_routing)
+    markdown = "\n".join(
+        [
+            f"# Debt Owner Routing Packet\n\nGenerated at: {owner_routing['generated_at']}\n",
+            f"Owners: {owner_routing['summary']['owner_count']}\n",
+            f"Total routed items: {owner_routing['summary']['total_routed_items']}\n",
+            (
+                "Lane counts: "
+                f"revalidate_now={owner_routing['summary']['lane_counts']['revalidate_now']}, "
+                f"schedule_now={owner_routing['summary']['lane_counts']['schedule_now']}, "
+                f"escalate_now={owner_routing['summary']['lane_counts']['escalate_now']}, "
+                f"continue_mitigation={owner_routing['summary']['lane_counts']['continue_mitigation']}, "
+                f"watch_only={owner_routing['summary']['lane_counts']['watch_only']}\n"
+            ),
+            *[_render_owner_routing_section(owner) for owner in owner_routing["owners"]],
+        ]
+    )
+    path = omo_dir / "debt" / "owner-routing" / "current.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(markdown, encoding="utf-8")
+
+
+def _render_dispatch_owner_section(owner_packet: dict[str, object]) -> str:
+    lines = [f"## Owner: {owner_packet['owner']}", ""]
+    lines.append(f"Dispatched items: {owner_packet['item_count']}")
+    lines.append("")
+    lines.append("### Frozen Commands")
+    lines.append("")
+    if owner_packet["entries"]:
+        for entry in owner_packet["entries"]:
+            lines.append(f"- `{entry['id']}` — `{entry['command']}`")
+    else:
+        lines.append("- none")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_dispatch_packet(omo_dir: Path, dispatch_packet: dict[str, object]) -> None:
+    markdown = "\n".join(
+        [
+            "# Debt Dispatch Packet\n",
+            f"Dispatch timestamp: {dispatch_packet['dispatched_at']}\n",
+            f"Owner count: {dispatch_packet['summary']['owner_count']}\n",
+            f"Total dispatched items: {dispatch_packet['summary']['total_dispatched_items']}\n",
+            *[_render_dispatch_owner_section(owner) for owner in dispatch_packet["owners"]],
+        ]
+    )
+    run_yaml_path = omo_dir.parent / dispatch_packet["latest_run_ref"]
+    run_md_path = run_yaml_path.with_suffix(".md")
+    if run_yaml_path.exists() or run_md_path.exists():
+        raise FileExistsError(f"dispatch run already exists: {run_yaml_path}")
+
+    _write_yaml(omo_dir / "debt" / "dispatch" / "current.yaml", dispatch_packet)
+    current_md_path = omo_dir / "debt" / "dispatch" / "current.md"
+    current_md_path.parent.mkdir(parents=True, exist_ok=True)
+    current_md_path.write_text(markdown, encoding="utf-8")
+    _write_yaml(run_yaml_path, dispatch_packet)
+    run_md_path.write_text(markdown, encoding="utf-8")
+
+
+def write_review_pack(
+    omo_dir: Path,
+    items: tuple[DebtItem, ...],
+    metrics,
+    review_queue: dict[str, object],
+    now: str,
+) -> None:
+    sections = classify_review_sections(items)
+    watchlist = list(metrics.watchlist_item_ids)
+    gate = list(metrics.gate_item_ids)
+    content = "\n".join(
+        [
+            f"# Debt Review Pack\n\nGenerated at: {now}\n",
+            _render_section("Watchlist", watchlist),
+            _render_section("Gate Debts", gate),
+            _render_queue_section("Due Now", review_queue["due_now"], "priority_reason"),
+            _render_queue_section("Escalation Candidates", review_queue["escalation_candidates"], "escalation_reason"),
+            _render_queue_section("Upcoming Window", review_queue["upcoming"], "priority_reason"),
+            _render_queue_section("Unscheduled Debts", review_queue["unscheduled"], "priority_reason"),
+            _render_section("Newly Registered", sections["newly_registered"]),
+            _render_section("Closed Debts", sections["closed"]),
+            _render_section("Drifted Debts", sections["drifted"]),
+            _render_section("Escalated Debts", sections["escalated"]),
+            _render_section("Reopened Debts", sections["reopened"]),
+        ]
+    )
+    review_path = omo_dir / "debt" / "reviews" / "current.md"
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(content, encoding="utf-8")
+
+
+def refresh_outputs(omo_dir: Path, now: str) -> None:
+    ledger = load_debt_ledger(omo_dir)
+    metrics = compute_debt_metrics(ledger.items, now=now, repo_root=omo_dir.parent)
+    review_queue = build_review_queue(ledger.items, now=now, repo_root=omo_dir.parent)
+    action_packet = build_action_packet(review_queue, now=now)
+    owner_routing = build_owner_routing_packet(action_packet)
+    write_dashboard(omo_dir, metrics, review_queue, now)
+    write_review_queue(omo_dir, review_queue)
+    write_review_pack(omo_dir, ledger.items, metrics, review_queue, now)
+    write_action_packet(omo_dir, action_packet)
+    write_owner_routing(omo_dir, owner_routing)
+
+
+def dispatch_outputs(omo_dir: Path, now: str) -> None:
+    owner_routing_path = omo_dir / "debt" / "owner-routing" / "current.yaml"
+    if not owner_routing_path.exists():
+        raise FileNotFoundError(f"missing owner routing packet: {owner_routing_path}")
+    owner_routing = _load_yaml(owner_routing_path)
+    if not owner_routing:
+        raise ValueError(f"empty owner routing packet: {owner_routing_path}")
+    write_dispatch_packet(omo_dir, build_dispatch_packet(owner_routing, dispatched_at=now))
+
+
+def load_dispatch_packet(omo_dir: Path) -> dict:
+    dispatch_path = omo_dir / "debt" / "dispatch" / "current.yaml"
+    if not dispatch_path.exists():
+        raise FileNotFoundError(f"missing dispatch packet: {dispatch_path}")
+    dispatch_packet = _load_yaml(dispatch_path)
+    if not dispatch_packet:
+        raise ValueError(f"empty dispatch packet: {dispatch_path}")
+    return dispatch_packet
+
+
+def load_dispatch_run(omo_dir: Path, dispatch_run_ref: str) -> tuple[Path, dict]:
+    run_path = omo_dir.parent / dispatch_run_ref
+    if not run_path.exists():
+        raise FileNotFoundError(f"missing dispatch run artifact: {run_path}")
+    run_packet = _load_yaml(run_path)
+    if not run_packet:
+        raise ValueError(f"empty dispatch run artifact: {run_path}")
+    return run_path, run_packet
+
+
+def require_dispatch_bound_revalidate(
+    omo_dir: Path,
+    item_id: str,
+    dispatch_run_ref: str | None,
+) -> str | None:
+    dispatch_path = omo_dir / "debt" / "dispatch" / "current.yaml"
+    if not dispatch_path.exists():
+        if dispatch_run_ref:
+            raise FileNotFoundError(f"missing dispatch packet: {dispatch_path}")
+        return None
+
+    dispatch_packet = load_dispatch_packet(omo_dir)
+    entry = find_dispatch_entry(dispatch_packet, item_id)
+    if not entry or entry.get("primary_lane") != "revalidate_now":
+        if dispatch_run_ref:
+            raise ValueError(f"item is not a dispatched revalidate entry: {item_id}")
+        return None
+    if not dispatch_run_ref:
+        raise ValueError(f"missing --dispatch-run-ref for dispatched revalidate item: {item_id}")
+    if dispatch_run_ref != dispatch_packet["latest_run_ref"]:
+        raise ValueError(f"dispatch run must match latest dispatch run: {dispatch_run_ref}")
+
+    _, run_packet = load_dispatch_run(omo_dir, dispatch_run_ref)
+    run_entry = find_dispatch_entry(run_packet, item_id)
+    if not run_entry or run_entry.get("primary_lane") != "revalidate_now":
+        raise ValueError(f"dispatch run does not contain a revalidate entry for: {item_id}")
+    return dispatch_run_ref
+
+
+def require_matching_revalidate_approval(omo_dir: Path, item_id: str, dispatch_run_ref: str | None) -> None:
+    dispatch_path = omo_dir / "debt" / "dispatch" / "current.yaml"
+    if not dispatch_path.exists():
+        return
+
+    dispatch_packet = load_dispatch_packet(omo_dir)
+    entry = find_dispatch_entry(dispatch_packet, item_id)
+    if not dispatch_entry_requires_approval(entry):
+        return
+    if not dispatch_run_ref:
+        raise ValueError(f"missing --dispatch-run-ref for approved dispatched item: {item_id}")
+
+    approval_path = approval_current_path(omo_dir, item_id)
+    if not approval_path.exists():
+        raise FileNotFoundError(f"missing approval record: {approval_path}")
+    approval_record = _load_yaml(approval_path)
+    if not approval_record:
+        raise ValueError(f"empty approval record: {approval_path}")
+    if approval_record.get("approval_scope") != APPROVAL_SCOPE_EXECUTE_REVALIDATE:
+        raise ValueError(f"approval scope must be {APPROVAL_SCOPE_EXECUTE_REVALIDATE}: {approval_path}")
+    if approval_record.get("dispatch_run_ref") != dispatch_run_ref:
+        raise ValueError(f"approval dispatch run mismatch: {approval_path} != {dispatch_run_ref}")
+
+
+def approve_item(
+    omo_dir: Path,
+    item_id: str,
+    approved_by: str,
+    approval_scope: str,
+    approved_at: str,
+) -> None:
+    _parse_iso8601(approved_at)
+    dispatch_packet = load_dispatch_packet(omo_dir)
+    entry = find_dispatch_entry(dispatch_packet, item_id)
+    if not dispatch_entry_requires_approval(entry):
+        raise ValueError(f"item is not a gate-level dispatched revalidate item: {item_id}")
+
+    current_path, record_path = approval_paths(omo_dir, item_id, approved_at)
+    if record_path.exists():
+        raise FileExistsError(f"approval record already exists: {record_path}")
+
+    approval_record = build_approval_record(
+        item_id=item_id,
+        approved_by=approved_by,
+        approved_at=approved_at,
+        dispatch_run_ref=dispatch_packet["latest_run_ref"],
+        approval_scope=approval_scope,
+    )
+    _write_yaml(record_path, approval_record)
+    _write_yaml(current_path, approval_record)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="omo-debt")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    register_parser = subparsers.add_parser("register")
+    register_parser.add_argument("--omo-dir", default=".omo")
+    register_parser.add_argument("--id", required=True)
+    register_parser.add_argument("--title", required=True)
+    register_parser.add_argument("--dimension", required=True)
+    register_parser.add_argument("--subdimension", required=True)
+    register_parser.add_argument("--severity", required=True)
+    register_parser.add_argument("--owner", required=True)
+
+    schedule_parser = subparsers.add_parser("schedule")
+    schedule_parser.add_argument("--omo-dir", default=".omo")
+    schedule_parser.add_argument("--id", required=True)
+    schedule_parser.add_argument("--next-review-at", required=True)
+
+    refresh_parser = subparsers.add_parser("refresh")
+    refresh_parser.add_argument("--omo-dir", default=".omo")
+    refresh_parser.add_argument("--now", required=True)
+
+    dispatch_parser = subparsers.add_parser("dispatch")
+    dispatch_parser.add_argument("--omo-dir", default=".omo")
+    dispatch_parser.add_argument("--now", required=True)
+
+    approve_parser = subparsers.add_parser("approve")
+    approve_parser.add_argument("--omo-dir", default=".omo")
+    approve_parser.add_argument("--id", required=True)
+    approve_parser.add_argument("--approved-by", required=True)
+    approve_parser.add_argument("--scope", required=True)
+    approve_parser.add_argument("--approved-at", required=True)
+
+    reclassify_parser = subparsers.add_parser("reclassify")
+    reclassify_parser.add_argument("--omo-dir", default=".omo")
+    reclassify_parser.add_argument("--id", required=True)
+    reclassify_parser.add_argument("--dimension", required=True)
+    reclassify_parser.add_argument("--subdimension", required=True)
+
+    escalate_parser = subparsers.add_parser("escalate")
+    escalate_parser.add_argument("--omo-dir", default=".omo")
+    escalate_parser.add_argument("--id", required=True)
+    escalate_parser.add_argument("--gate-level", required=True)
+
+    revalidate_parser = subparsers.add_parser("revalidate")
+    revalidate_parser.add_argument("--omo-dir", default=".omo")
+    revalidate_parser.add_argument("--id", required=True)
+    revalidate_parser.add_argument("--reviewed-at", required=True)
+    revalidate_parser.add_argument("--dispatch-run-ref")
+
+    close_parser = subparsers.add_parser("close")
+    close_parser.add_argument("--omo-dir", default=".omo")
+    close_parser.add_argument("--id", required=True)
+
+    reopen_parser = subparsers.add_parser("reopen")
+    reopen_parser.add_argument("--omo-dir", default=".omo")
+    reopen_parser.add_argument("--id", required=True)
+
+    args = parser.parse_args()
+    omo_dir = Path(args.omo_dir)
+
+    if args.command == "register":
+        payload = register_item(args)
+        item_ref = f".omo/debt/items/{args.id}.yaml"
+        item_path = omo_dir / "debt" / "items" / f"{args.id}.yaml"
+        _write_yaml(item_path, payload)
+        append_registry_ref(omo_dir, item_ref)
+        print(f"registered {args.id}")
+        return 0
+
+    if args.command == "schedule":
+        schedule_item(omo_dir, args.id, args.next_review_at)
+        print(f"scheduled {args.id}")
+        return 0
+
+    if args.command == "refresh":
+        refresh_outputs(omo_dir, args.now)
+        print("refreshed debt outputs")
+        return 0
+
+    if args.command == "dispatch":
+        dispatch_outputs(omo_dir, args.now)
+        print("dispatched debt owner routing")
+        return 0
+
+    if args.command == "approve":
+        approve_item(omo_dir, args.id, args.approved_by, args.scope, args.approved_at)
+        print(f"approved {args.id}")
+        return 0
+
+    if args.command == "reclassify":
+        item_path, payload = update_item(omo_dir, args.id)
+        payload["dimension"] = args.dimension
+        payload["subdimension"] = args.subdimension
+        append_history(payload, "reclassify", f"Reclassified to {args.dimension}/{args.subdimension}.")
+        _write_yaml(item_path, payload)
+        print(f"reclassified {args.id}")
+        return 0
+
+    if args.command == "escalate":
+        item_path, payload = update_item(omo_dir, args.id)
+        payload["gate_level"] = args.gate_level
+        append_history(payload, "escalate", f"Escalated to {args.gate_level}.")
+        _write_yaml(item_path, payload)
+        print(f"escalated {args.id}")
+        return 0
+
+    if args.command == "revalidate":
+        bound_run_ref = require_dispatch_bound_revalidate(omo_dir, args.id, args.dispatch_run_ref)
+        require_matching_revalidate_approval(omo_dir, args.id, bound_run_ref)
+        item_path, payload = update_item(omo_dir, args.id)
+        payload["last_reviewed_at"] = args.reviewed_at
+        append_history(payload, "revalidate", f"Reviewed at {args.reviewed_at}.")
+        _write_yaml(item_path, payload)
+        if bound_run_ref:
+            record_path = execution_record_path(omo_dir, bound_run_ref, args.id)
+            if record_path.exists():
+                raise FileExistsError(f"execution record already exists: {record_path}")
+            _write_yaml(
+                record_path,
+                build_execution_record(
+                    item_id=args.id,
+                    dispatch_run_ref=bound_run_ref,
+                    reviewed_at=args.reviewed_at,
+                ),
+            )
+        print(f"revalidated {args.id}")
+        return 0
+
+    if args.command == "close":
+        item_path, payload = update_item(omo_dir, args.id)
+        payload["lifecycle_state"] = "closed"
+        payload["gate_level"] = "none"
+        append_history(payload, "close", "Closed debt item.")
+        _write_yaml(item_path, payload)
+        print(f"closed {args.id}")
+        return 0
+
+    if args.command == "reopen":
+        item_path, payload = update_item(omo_dir, args.id)
+        payload["lifecycle_state"] = "identified"
+        append_history(payload, "reopen", "Reopened debt item.")
+        _write_yaml(item_path, payload)
+        print(f"reopened {args.id}")
+        return 0
+
+    raise ValueError(f"unsupported command: {args.command}")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
