@@ -595,14 +595,25 @@ def reporting_diff_outputs(omo_dir: Path) -> None:
     )
 
 
-def reporting_trend_outputs(omo_dir: Path, window_requested: int | None = None) -> None:
+def reporting_trend_outputs(
+    omo_dir: Path,
+    window_requested: int | None = None,
+    from_run_stamp_requested: str | None = None,
+    to_run_stamp_requested: str | None = None,
+) -> None:
     history_packet = load_reporting_history_packet(omo_dir)
+    if window_requested is not None and (from_run_stamp_requested is not None or to_run_stamp_requested is not None):
+        raise ValueError("--last cannot be combined with --from-run-stamp or --to-run-stamp")
+    if (from_run_stamp_requested is None) != (to_run_stamp_requested is None):
+        raise ValueError("range mode requires both from-run-stamp and to-run-stamp")
     write_reporting_trend_packet(
         omo_dir,
         build_reporting_trend_packet(
             generated_at=_timestamp(),
             history_packet=history_packet,
             window_requested=window_requested,
+            from_run_stamp_requested=from_run_stamp_requested,
+            to_run_stamp_requested=to_run_stamp_requested,
         ),
     )
 
@@ -738,6 +749,8 @@ def main() -> int:
     report_trend_parser = subparsers.add_parser("report-trend")
     report_trend_parser.add_argument("--omo-dir", default=".omo")
     report_trend_parser.add_argument("--last", type=_positive_int)
+    report_trend_parser.add_argument("--from-run-stamp")
+    report_trend_parser.add_argument("--to-run-stamp")
 
     reclassify_parser = subparsers.add_parser("reclassify")
     reclassify_parser.add_argument("--omo-dir", default=".omo")
@@ -817,7 +830,12 @@ def main() -> int:
         return 0
 
     if args.command == "report-trend":
-        reporting_trend_outputs(omo_dir, window_requested=args.last)
+        reporting_trend_outputs(
+            omo_dir,
+            window_requested=args.last,
+            from_run_stamp_requested=args.from_run_stamp,
+            to_run_stamp_requested=args.to_run_stamp,
+        )
         print("generated debt reporting trend packet")
         return 0
 
