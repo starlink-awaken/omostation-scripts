@@ -15,6 +15,10 @@ try:
     from scripts.omo_handoff_index import write_handoff_index
     from scripts.omo_metrics import write_worker_utilization_summary
     from scripts.omo_promotion_history import build_promotion_history
+    from scripts.omo_promotion_readiness import (
+        build_promotion_readiness_packet,
+        render_promotion_readiness_markdown,
+    )
     from scripts.omo_rules import evaluate_rule_bundle
     from scripts.omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
     from scripts.omo_redaction import redact_sensitive_text
@@ -25,6 +29,7 @@ except ModuleNotFoundError:
     from omo_handoff_index import write_handoff_index
     from omo_metrics import write_worker_utilization_summary
     from omo_promotion_history import build_promotion_history
+    from omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
     from omo_rules import evaluate_rule_bundle
     from omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
     from omo_redaction import redact_sensitive_text
@@ -802,6 +807,46 @@ def _write_task_promotion_history(root: Path, omo_dir: str | Path = ".omo", now:
     return 0
 
 
+def _promotion_readiness_entry(root: Path, task_path: Path, omo_dir: str | Path = ".omo") -> dict[str, object]:
+    task = _load_yaml(task_path)
+    eval_result = _promotion_eval(root, task["id"], omo_dir=omo_dir)
+    return {
+        "task_id": task["id"],
+        "task_ref": eval_result["task_ref"],
+        "phase": task["phase"],
+        "status": task["status"],
+        "risk_level": task["risk_level"],
+        "allowed_operation_level": task["allowed_operation_level"],
+        "human_approval_required": bool(task.get("human_approval_required")),
+        "approval_ref": task.get("approval_ref"),
+        "eligible": eval_result["eligible"],
+        "blockers": eval_result["blockers"],
+        "checks": eval_result["checks"],
+        "errors": eval_result["errors"],
+    }
+
+
+def _write_task_promotion_readiness(root: Path, omo_dir: str | Path = ".omo", now: str | None = None) -> int:
+    omo = _omo_path(root, omo_dir)
+    goals = _load_yaml(omo / "goals" / "current.yaml")
+    planned_dir = omo / "tasks" / "planned"
+    entries = tuple(
+        _promotion_readiness_entry(root, task_path, omo_dir=omo_dir)
+        for task_path in sorted(planned_dir.glob("*.yaml"))
+    )
+    packet = build_promotion_readiness_packet(
+        generated_at=now or _utc_now(),
+        current_phase=int(goals["phase"]),
+        tasks=entries,
+    )
+    readiness_dir = omo / "workers" / "promotion"
+    readiness_dir.mkdir(parents=True, exist_ok=True)
+    _write_yaml(readiness_dir / "readiness.yaml", packet)
+    write_text_atomic(readiness_dir / "readiness.md", render_promotion_readiness_markdown(packet))
+    print(f"ready_count={packet['ready_count']} blocked_count={packet['blocked_count']}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="omo")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -873,6 +918,9 @@ def main() -> int:
     promotion_history_parser = task_sub.add_parser("promotion-history")
     promotion_history_parser.add_argument("--omo-dir", default=".omo")
     promotion_history_parser.add_argument("--now")
+    promotion_readiness_parser = task_sub.add_parser("promotion-readiness")
+    promotion_readiness_parser.add_argument("--omo-dir", default=".omo")
+    promotion_readiness_parser.add_argument("--now")
 
     args = parser.parse_args()
 
@@ -975,6 +1023,9 @@ def main() -> int:
 
     if args.command == "task" and args.task_command == "promotion-history":
         return _write_task_promotion_history(Path.cwd(), omo_dir=args.omo_dir, now=args.now)
+
+    if args.command == "task" and args.task_command == "promotion-readiness":
+        return _write_task_promotion_readiness(Path.cwd(), omo_dir=args.omo_dir, now=args.now)
 
     return 1
 
