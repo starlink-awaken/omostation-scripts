@@ -78,6 +78,13 @@ def _parse_iso8601(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("value must be >= 1")
+    return parsed
+
+
 def register_item(args: argparse.Namespace) -> dict:
     payload = {
         "id": args.id,
@@ -588,13 +595,14 @@ def reporting_diff_outputs(omo_dir: Path) -> None:
     )
 
 
-def reporting_trend_outputs(omo_dir: Path) -> None:
+def reporting_trend_outputs(omo_dir: Path, window_requested: int | None = None) -> None:
     history_packet = load_reporting_history_packet(omo_dir)
     write_reporting_trend_packet(
         omo_dir,
         build_reporting_trend_packet(
             generated_at=_timestamp(),
             history_packet=history_packet,
+            window_requested=window_requested,
         ),
     )
 
@@ -729,6 +737,7 @@ def main() -> int:
 
     report_trend_parser = subparsers.add_parser("report-trend")
     report_trend_parser.add_argument("--omo-dir", default=".omo")
+    report_trend_parser.add_argument("--last", type=_positive_int)
 
     reclassify_parser = subparsers.add_parser("reclassify")
     reclassify_parser.add_argument("--omo-dir", default=".omo")
@@ -808,7 +817,7 @@ def main() -> int:
         return 0
 
     if args.command == "report-trend":
-        reporting_trend_outputs(omo_dir)
+        reporting_trend_outputs(omo_dir, window_requested=args.last)
         print("generated debt reporting trend packet")
         return 0
 
