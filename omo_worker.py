@@ -59,6 +59,14 @@ def _find_task_file(active_dir: Path, task_id: str) -> Path:
     raise FileNotFoundError(f"Task not found in active/: {task_id}")
 
 
+def _find_planned_task_file(planned_dir: Path, task_id: str) -> Path:
+    for task_file in planned_dir.glob("*.yaml"):
+        task = _load_yaml(task_file)
+        if task.get("id") == task_id:
+            return task_file
+    raise FileNotFoundError(f"Task not found in planned/: {task_id}")
+
+
 def _find_dispatch_file(runs_dir: Path, dispatch_id: str) -> Path:
     path = runs_dir / f"{dispatch_id}-dispatch.yaml"
     if not path.exists():
@@ -651,6 +659,55 @@ def _print_worker_rules_eval(root: Path, envelope_ref: str) -> int:
     return 0
 
 
+def _promotion_eval(root: Path, task_id: str, omo_dir: str | Path = ".omo") -> dict[str, object]:
+    omo = _omo_path(root, omo_dir)
+    goals = _load_yaml(omo / "goals" / "current.yaml")
+    task_file = _find_planned_task_file(omo / "tasks" / "planned", task_id)
+    task = _load_yaml(task_file)
+    active_target = omo / "tasks" / "active" / task_file.name
+
+    checks = {
+        "queue_membership_ok": True,
+        "status_ok": task.get("status") in {"candidate", "pending"},
+        "phase_ok": task.get("phase") == int(goals["phase"]) + 1,
+        "approval_ready": (not task.get("human_approval_required")) or bool(task.get("approval_ref")),
+        "target_path_clear": not active_target.exists(),
+    }
+
+    active_ready_errors = validate_task_file(task_file)
+    checks["active_schema_ready"] = not active_ready_errors
+
+    blockers: list[str] = []
+    if not checks["status_ok"]:
+        blockers.append("status_invalid")
+    if not checks["phase_ok"]:
+        blockers.append("phase_mismatch")
+    if not checks["approval_ready"]:
+        blockers.append("approval_missing")
+    if not checks["target_path_clear"]:
+        blockers.append("target_path_exists")
+    if not checks["active_schema_ready"]:
+        blockers.append("active_schema_invalid")
+
+    return {
+        "task_id": task_id,
+        "task_ref": str(task_file.relative_to(root)),
+        "eligible": not blockers,
+        "blockers": blockers,
+        "checks": checks,
+        "errors": active_ready_errors,
+    }
+
+
+def _print_task_promotion_eval(root: Path, task_id: str, omo_dir: str | Path = ".omo") -> int:
+    result = _promotion_eval(root, task_id, omo_dir=omo_dir)
+    print(
+        f"task_id={result['task_id']} eligible={str(result['eligible']).lower()} "
+        f"blockers={','.join(result['blockers']) or 'none'}"
+    )
+    return 0 if result["eligible"] else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="omo")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -711,6 +768,9 @@ def main() -> int:
     validate_parser.add_argument("task_file", nargs="?")
     validate_parser.add_argument("--all-active", action="store_true")
     validate_parser.add_argument("--all-planned", action="store_true")
+    promote_eval_parser = task_sub.add_parser("promote-eval")
+    promote_eval_parser.add_argument("task_id")
+    promote_eval_parser.add_argument("--omo-dir", default=".omo")
 
     args = parser.parse_args()
 
@@ -798,6 +858,9 @@ def main() -> int:
         for error in errors:
             print(error)
         return 1
+
+    if args.command == "task" and args.task_command == "promote-eval":
+        return _print_task_promotion_eval(Path.cwd(), args.task_id, omo_dir=args.omo_dir)
 
     return 1
 
