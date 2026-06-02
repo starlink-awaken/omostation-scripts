@@ -396,4 +396,27 @@ def render_reporting_trend_markdown(packet: dict[str, object]) -> str:
                     "",
                 ]
             )
+    execution_progress = packet.get("execution_progress")
+    if execution_progress is not None:
+        lines.extend(
+            [
+                "## Execution Progress",
+                "",
+                f"progress_status={execution_progress['progress_status']}",
+                f"anchor_run_stamp={execution_progress['anchor_run_stamp']}",
+                f"baseline_open_item_count={execution_progress['baseline_open_item_count']}",
+                "",
+            ]
+        )
+        for run in execution_progress["runs"]:
+            lines.extend(
+                [
+                    f"### Progress Run: {run['run_stamp']}",
+                    "",
+                    f"open_item_count={run['open_item_count']}",
+                    f"open_item_delta_vs_baseline={run['open_item_delta_vs_baseline']}",
+                    f"open_item_ratio_vs_baseline={run['open_item_ratio_vs_baseline']}",
+                    "",
+                ]
+            )
     return "\n".join(lines)
