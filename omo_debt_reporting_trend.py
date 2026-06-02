@@ -211,6 +211,50 @@ def _execution_progress(
     }
 
 
+def _state_progress_run(
+    run: dict[str, object],
+    reporting_packet: dict[str, object],
+    baseline_pending_approval: int,
+) -> dict[str, object]:
+    state_counts = reporting_packet["summary"]["state_counts"]
+    pending_approval = int(state_counts["pending_approval"])
+    executed = int(run["executed_item_count"])
+    ready_to_execute = int(run["total_items"]) - pending_approval - executed
+    return {
+        "run_stamp": run["run_stamp"],
+        "pending_approval": pending_approval,
+        "ready_to_execute": ready_to_execute,
+        "executed": executed,
+        "pending_approval_delta_vs_baseline": pending_approval - baseline_pending_approval,
+    }
+
+
+def _state_progress(
+    ordered_runs: list[dict[str, object]],
+    reporting_packets_by_run: dict[str, dict[str, object]] | None,
+) -> dict[str, object] | None:
+    if len(ordered_runs) < 2 or reporting_packets_by_run is None:
+        return None
+
+    anchor_run = ordered_runs[0]
+    anchor_packet = reporting_packets_by_run[str(anchor_run["run_stamp"])]
+    baseline_pending_approval = int(anchor_packet["summary"]["state_counts"]["pending_approval"])
+    runs = [
+        _state_progress_run(
+            run,
+            reporting_packets_by_run[str(run["run_stamp"])],
+            baseline_pending_approval,
+        )
+        for run in ordered_runs
+    ]
+    return {
+        "state_progress_status": "state_progress_available",
+        "anchor_run_stamp": anchor_run["run_stamp"],
+        "baseline_pending_approval": baseline_pending_approval,
+        "runs": runs,
+    }
+
+
 def _run_index(runs: list[dict[str, object]], run_stamp: str, *, label: str) -> int:
     for index, entry in enumerate(runs):
         if entry["run_stamp"] == run_stamp:
@@ -281,6 +325,7 @@ def build_reporting_trend_packet(
         ),
     )
     execution_progress = _execution_progress(ordered_runs)
+    state_progress = _state_progress(ordered_runs, reporting_packets_by_run)
     return {
         "generated_at": generated_at,
         "trend_status": "trend_available" if len(ordered_runs) >= 2 else "insufficient_history",
@@ -295,6 +340,7 @@ def build_reporting_trend_packet(
         "owners": owners,
         "owner_presence": owner_presence,
         "execution_progress": execution_progress,
+        "state_progress": state_progress,
     }
 
 
