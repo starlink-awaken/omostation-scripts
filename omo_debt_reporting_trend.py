@@ -38,8 +38,10 @@ def build_reporting_trend_packet(
     *,
     generated_at: str,
     history_packet: dict[str, object],
+    window_requested: int | None = None,
 ) -> dict[str, object]:
-    ordered_runs = [_trend_run(entry) for entry in reversed(history_packet["runs"])]
+    selected_runs = history_packet["runs"][:window_requested] if window_requested is not None else history_packet["runs"]
+    ordered_runs = [_trend_run(entry) for entry in reversed(selected_runs)]
     intervals = [
         _interval(ordered_runs[index], ordered_runs[index + 1])
         for index in range(len(ordered_runs) - 1)
@@ -49,6 +51,7 @@ def build_reporting_trend_packet(
     return {
         "generated_at": generated_at,
         "trend_status": "trend_available" if len(ordered_runs) >= 2 else "insufficient_history",
+        "window_requested": window_requested,
         "window_run_count": len(ordered_runs),
         "oldest_run_stamp": oldest_run_stamp,
         "latest_run_stamp": latest_run_stamp,
