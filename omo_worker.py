@@ -66,7 +66,9 @@ except ModuleNotFoundError:
     from omo_task_schema import validate_active_tasks, validate_planned_tasks, validate_task_file
 
 
-def _timestamp_slug() -> str:
+def _timestamp_slug(now: str | None = None) -> str:
+    if now:
+        return now.replace("-", "").replace(":", "").replace("T", "-").replace("Z", "")
     return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
 
@@ -116,6 +118,34 @@ def _worker_command(registry: dict, worker_id: str, transport: str) -> str:
         if worker.get("id") == worker_id:
             return worker["transports"][transport]["command"]
     raise KeyError(f"Worker not registered: {worker_id}")
+
+
+def _default_enabled_worker_id(registry: dict) -> str:
+    default_role = registry.get("default_worker_role")
+    for worker in registry.get("workers", []):
+        if worker.get("enabled", True) and (default_role is None or worker.get("role") == default_role):
+            return str(worker["id"])
+    for worker in registry.get("workers", []):
+        if worker.get("enabled", True):
+            return str(worker["id"])
+    raise ValueError("no enabled worker is registered")
+
+
+def _dispatch_allowed_write_paths(task: dict) -> list[str]:
+    paths: list[str] = []
+    for deliverable in task.get("deliverables", []):
+        path = str(deliverable)
+        if path.endswith("/"):
+            candidate = path
+        else:
+            candidate = str(Path(path).parent)
+            if candidate == ".":
+                candidate = path
+            elif not candidate.endswith("/"):
+                candidate = f"{candidate}/"
+        if candidate not in paths:
+            paths.append(candidate)
+    return paths
 
 
 def _append_unique(items: list[str], values: list[str]) -> list[str]:
@@ -259,6 +289,7 @@ def dispatch_task(
     transport: str = "cli_prompt",
     prior_evidence: list[str] | None = None,
     prompt_addendum: list[str] | None = None,
+    now: str | None = None,
     omo_dir: str | Path = ".omo",
 ) -> dict[str, str]:
     omo = _omo_path(root, omo_dir)
@@ -270,7 +301,8 @@ def dispatch_task(
     task = _load_yaml(task_file)
     registry = _load_yaml(omo / "workers" / "registry.yaml")
 
-    dispatch_id = f"{task_id.lower()}-{worker_id}-{_timestamp_slug()}"
+    dispatch_now = now or _utc_now()
+    dispatch_id = f"{task_id.lower()}-{worker_id}-{_timestamp_slug(dispatch_now)}"
     run_dir = omo / "workers" / "runs"
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -405,7 +437,7 @@ def dispatch_task(
         "run_ref": str(dispatch_path),
         "dispatch_state": "dispatched",
         "coordinator": "copilot-cli",
-        "launched_at": _utc_now(),
+        "launched_at": dispatch_now,
         "lease": {
             "heartbeat_interval_seconds": 300,
             "warning_after_seconds": 900,
@@ -449,7 +481,7 @@ def dispatch_task(
     task["dispatch_id"] = dispatch_id
     task["run_ref"] = str(dispatch_path)
     task["review_ref"] = str(review_path)
-    task["started_at"] = task.get("started_at") or _utc_now()
+    task["started_at"] = task.get("started_at") or dispatch_now
     task["knowledge_refs"] = _append_unique(task.get("knowledge_refs", []), source_docs)
     task["handoff_refs"] = _append_unique(
         task.get("handoff_refs", []),
@@ -1066,6 +1098,7 @@ def _write_task_governance_overlay_run_next(
     run = planned["run"]
     roadmap = planned["roadmap"]
     omo = _omo_path(root, omo_dir)
+    control = _load_yaml(omo / "_control" / "governance-overlay" / "current.yaml")
 
     roadmap_item = None
     if run["roadmap_item_id"]:
@@ -1073,6 +1106,60 @@ def _write_task_governance_overlay_run_next(
             if item.get("id") == run["roadmap_item_id"]:
                 roadmap_item = item
                 break
+
+    if run.get("mode") == "continue_active":
+        if roadmap_item is not None and run["summary"] == "close_ready":
+            roadmap_item["status"] = "done"
+            control["current_milestone"] = run["control_updates"].get("current_milestone")
+            control["next_milestone"] = run["control_updates"].get("next_milestone")
+            control["updated_at"] = run_now
+            run["summary"] = "closed"
+        elif roadmap_item is not None and run["summary"] == "block_ready":
+            roadmap_item["status"] = "blocked"
+            roadmap_item["blocked_reason"] = "all_targets_terminal_blocked"
+            run["summary"] = "blocked"
+        elif str(run.get("next_action_before_run", "")).startswith("dispatch:"):
+            task_id = str(run["next_action_before_run"]).split(":", 1)[1]
+            registry = _load_yaml(omo / "workers" / "registry.yaml")
+            task = _load_yaml(_find_task_file(omo / "tasks" / "active", task_id))
+            dispatch = dispatch_task(
+                root,
+                task_id,
+                _default_enabled_worker_id(registry),
+                _dispatch_allowed_write_paths(task),
+                launch=False,
+                now=run_now,
+                omo_dir=omo_dir,
+            )
+            for target in run["target_results"]:
+                if target.get("task_id") == task_id:
+                    target["result"] = "dispatched"
+                    target["dispatch_id"] = dispatch["dispatch_id"]
+                    target["dispatch_path"] = dispatch["dispatch_path"]
+                    target["detail"] = "active pending task was preclaimed into worker dispatch flow"
+                    break
+            run["summary"] = "dispatched"
+        elif str(run.get("next_action_before_run", "")).startswith("verify:"):
+            task_id = str(run["next_action_before_run"]).split(":", 1)[1]
+            for target in run["target_results"]:
+                if target.get("task_id") == task_id:
+                    target["result"] = "verify_ready"
+                    target["detail"] = "active review task is ready for coordinator verification/closeout"
+                    break
+            run["summary"] = "verify_ready"
+
+        run_path = omo / "workers" / "runs" / f"{run['run_id']}.yaml"
+        _write_yaml(run_path, run)
+        _write_yaml(omo / "_truth" / "governance-overlay" / "roadmap.yaml", roadmap)
+        _write_yaml(omo / "_control" / "governance-overlay" / "current.yaml", control)
+
+        refreshed = build_governance_overlay_status(root, omo_dir=omo_dir, now=run_now)
+        current_dir = omo / "workers" / "governance-overlay"
+        current_dir.mkdir(parents=True, exist_ok=True)
+        _write_yaml(current_dir / "current.yaml", refreshed["yaml"])
+        write_text_atomic(current_dir / "current.md", refreshed["markdown"])
+        print(f"summary={run['summary']} roadmap_item_id={run['roadmap_item_id']}")
+        return 0
 
     executed_results: list[dict[str, object]] = []
     any_advanced = False

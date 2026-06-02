@@ -29,6 +29,18 @@ def _task_has_task_specific_promotion_approval(approval_ref: str | None) -> bool
     return bool(approval_ref and approval_ref.endswith(".yaml") and "-promotion-approval-" in approval_ref)
 
 
+def _roadmap_item_sort_key(item: dict[str, object]) -> tuple[int, str]:
+    return (0 if item["priority"] == "P0" else 1, str(item["id"]))
+
+
+def _target_state_summary(target_states: list[dict[str, object]]) -> dict[str, int]:
+    summary: dict[str, int] = {}
+    for target in target_states:
+        state = str(target["state"])
+        summary[state] = summary.get(state, 0) + 1
+    return summary
+
+
 def _target_action(root: Path, target_ref: str) -> dict[str, object]:
     if not target_ref.startswith(".omo/tasks/planned/"):
         return {
@@ -92,11 +104,39 @@ def plan_governance_overlay_cycle(root: Path, *, omo_dir: str | Path = ".omo", a
         "actor": actor,
         "started_at": now,
         "completed_at": now,
+        "mode": "advance_pending",
         "next_action_before_run": status["next_action"],
         "roadmap_item_id": None,
         "summary": "idle",
         "target_results": [],
+        "target_state_summary": {},
+        "control_updates": {},
     }
+    active_item = status.get("active_roadmap_item")
+    if active_item:
+        pending_items = [
+            item
+            for item in sorted(roadmap.get("items", []), key=_roadmap_item_sort_key)
+            if item.get("status") == "pending" and item.get("id") != active_item["id"]
+        ]
+        run["mode"] = "continue_active"
+        run["roadmap_item_id"] = str(active_item["id"])
+        run["target_results"] = list(status.get("active_target_states", []))
+        run["target_state_summary"] = _target_state_summary(run["target_results"])
+        run["control_updates"] = {
+            "current_milestone": pending_items[0]["id"] if pending_items else None,
+            "next_milestone": pending_items[1]["id"] if len(pending_items) > 1 else None,
+        }
+        states = [target["state"] for target in run["target_results"]]
+        terminal_blockers = {"planned_blocked", "unsupported_target_ref", "missing_target_ref"}
+        if states and all(state == "done" for state in states):
+            run["summary"] = "close_ready"
+        elif states and all(state in terminal_blockers for state in states):
+            run["summary"] = "block_ready"
+        else:
+            run["summary"] = "in_progress"
+        return {"run": run, "roadmap": roadmap, "mutated": False}
+
     if not status["autopilot_candidates"]:
         return {"run": run, "roadmap": roadmap, "mutated": False}
 
