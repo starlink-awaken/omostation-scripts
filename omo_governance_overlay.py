@@ -30,6 +30,20 @@ def build_governance_overlay_status(root: Path, *, omo_dir: str | Path = ".omo",
     blocked_items: list[dict[str, object]] = []
 
     for item in sorted(roadmap.get("items", []), key=_item_sort_key):
+        item_status = str(item.get("status", "pending"))
+        if item_status == "done":
+            continue
+        if item_status == "blocked":
+            blocked_items.append(
+                {
+                    "id": item["id"],
+                    "title": item["title"],
+                    "reason": str(item.get("blocked_reason", "blocked")),
+                }
+            )
+            continue
+        if item_status != "pending":
+            continue
         missing_refs = _missing_target_refs(root, list(item.get("target_refs", [])))
         unmet_deps = [dep for dep in item.get("depends_on", []) if dep not in completed_items]
         if missing_refs:

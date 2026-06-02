@@ -29,6 +29,7 @@ try:
     from scripts.omo_promotion_approval_history import build_promotion_approval_history
     from scripts.omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
     from scripts.omo_governance_overlay import build_governance_overlay_status
+    from scripts.omo_governance_overlay_loop import plan_governance_overlay_cycle
     from scripts.omo_promotion_readiness import (
         build_promotion_readiness_packet,
         render_promotion_readiness_markdown,
@@ -57,6 +58,7 @@ except ModuleNotFoundError:
     from omo_promotion_approval_history import build_promotion_approval_history
     from omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
     from omo_governance_overlay import build_governance_overlay_status
+    from omo_governance_overlay_loop import plan_governance_overlay_cycle
     from omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
     from omo_rules import evaluate_rule_bundle
     from omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
@@ -844,6 +846,24 @@ def _request_task_promotion_approval(
     now: str,
     omo_dir: str | Path = ".omo",
 ) -> int:
+    approval_ref, proposal_ref = _request_task_promotion_approval_record(
+        root,
+        task_id,
+        requested_by=requested_by,
+        now=now,
+        omo_dir=omo_dir,
+    )
+    print(f"approval_ref={approval_ref} proposal_ref={proposal_ref}")
+    return 0
+
+
+def _request_task_promotion_approval_record(
+    root: Path,
+    task_id: str,
+    requested_by: str,
+    now: str,
+    omo_dir: str | Path = ".omo",
+) -> tuple[str, str]:
     omo = _omo_path(root, omo_dir)
     task_path = _find_planned_task_file(omo / "tasks" / "planned", task_id)
     task = _load_yaml(task_path)
@@ -873,8 +893,7 @@ def _request_task_promotion_approval(
     task["approval_ref"] = approval_ref
     _write_yaml(task_path, task)
     proposal_ref = Path(omo_dir) / "_truth" / "task-center" / "proposals" / f"{proposal_record['id']}.yaml"
-    print(f"approval_ref={approval_ref} proposal_ref={proposal_ref}")
-    return 0
+    return approval_ref, str(proposal_ref)
 
 
 def _write_task_promotion_history(root: Path, omo_dir: str | Path = ".omo", now: str | None = None) -> int:
@@ -1035,6 +1054,94 @@ def _write_task_governance_overlay_status(root: Path, omo_dir: str | Path = ".om
     return 0
 
 
+def _write_task_governance_overlay_run_next(
+    root: Path,
+    *,
+    omo_dir: str | Path = ".omo",
+    actor: str,
+    now: str | None = None,
+) -> int:
+    run_now = now or _utc_now()
+    planned = plan_governance_overlay_cycle(root, omo_dir=omo_dir, actor=actor, now=run_now)
+    run = planned["run"]
+    roadmap = planned["roadmap"]
+    omo = _omo_path(root, omo_dir)
+
+    roadmap_item = None
+    if run["roadmap_item_id"]:
+        for item in roadmap.get("items", []):
+            if item.get("id") == run["roadmap_item_id"]:
+                roadmap_item = item
+                break
+
+    executed_results: list[dict[str, object]] = []
+    any_advanced = False
+    unsupported_only = bool(run["target_results"])
+    for target in run["target_results"]:
+        executed = dict(target)
+        action = executed["action"]
+        task_id = executed.get("task_id")
+        if action == "request_approval":
+            approval_ref, proposal_ref = _request_task_promotion_approval_record(
+                root,
+                str(task_id),
+                requested_by=actor,
+                now=run_now,
+                omo_dir=omo_dir,
+            )
+            executed["result"] = "approval_requested"
+            executed["approval_ref"] = approval_ref
+            executed["proposal_ref"] = proposal_ref
+            executed["detail"] = "task-specific promotion approval request created"
+            any_advanced = True
+            unsupported_only = False
+        elif action == "promote_apply":
+            promote_rc = _apply_task_promotion(root, str(task_id), promoted_by=actor, now=run_now, omo_dir=omo_dir)
+            if promote_rc == 0:
+                executed["result"] = "promoted"
+                executed["promotion_ref"] = f".omo/workers/runs/{task_id}-promotion-{_promotion_stamp(run_now)}.yaml"
+                executed["detail"] = "planned task promoted into active queue"
+                any_advanced = True
+            else:
+                executed["result"] = "promotion_blocked"
+                executed["detail"] = "promote-apply was blocked by existing promotion gates"
+            unsupported_only = False
+        elif action == "await_approval":
+            executed["result"] = "approval_pending"
+            executed["detail"] = "task-specific promotion approval exists but is not granted yet"
+            any_advanced = True
+            unsupported_only = False
+        executed_results.append(executed)
+
+    run["target_results"] = executed_results
+    if roadmap_item is not None:
+        if any_advanced:
+            roadmap_item["status"] = "in_progress"
+            roadmap_item.pop("blocked_reason", None)
+        elif unsupported_only:
+            roadmap_item["status"] = "blocked"
+            roadmap_item["blocked_reason"] = "unsupported_target_ref"
+        elif executed_results:
+            roadmap_item["status"] = "blocked"
+            roadmap_item["blocked_reason"] = "promotion_blocked"
+    if any_advanced:
+        run["summary"] = "advanced"
+    elif unsupported_only or executed_results:
+        run["summary"] = "blocked"
+
+    run_path = omo / "workers" / "runs" / f"{run['run_id']}.yaml"
+    _write_yaml(run_path, run)
+    _write_yaml(omo / "_truth" / "governance-overlay" / "roadmap.yaml", roadmap)
+
+    refreshed = build_governance_overlay_status(root, omo_dir=omo_dir, now=run_now)
+    current_dir = omo / "workers" / "governance-overlay"
+    current_dir.mkdir(parents=True, exist_ok=True)
+    _write_yaml(current_dir / "current.yaml", refreshed["yaml"])
+    write_text_atomic(current_dir / "current.md", refreshed["markdown"])
+    print(f"summary={run['summary']} roadmap_item_id={run['roadmap_item_id']}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="omo")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1127,6 +1234,10 @@ def main() -> int:
     governance_overlay_status_parser = task_sub.add_parser("governance-overlay-status")
     governance_overlay_status_parser.add_argument("--omo-dir", default=".omo")
     governance_overlay_status_parser.add_argument("--now")
+    governance_overlay_run_next_parser = task_sub.add_parser("governance-overlay-run-next")
+    governance_overlay_run_next_parser.add_argument("--omo-dir", default=".omo")
+    governance_overlay_run_next_parser.add_argument("--actor", required=True)
+    governance_overlay_run_next_parser.add_argument("--now")
 
     args = parser.parse_args()
 
@@ -1258,6 +1369,14 @@ def main() -> int:
 
     if args.command == "task" and args.task_command == "governance-overlay-status":
         return _write_task_governance_overlay_status(Path.cwd(), omo_dir=args.omo_dir, now=args.now)
+
+    if args.command == "task" and args.task_command == "governance-overlay-run-next":
+        return _write_task_governance_overlay_run_next(
+            Path.cwd(),
+            omo_dir=args.omo_dir,
+            actor=args.actor,
+            now=args.now,
+        )
 
     return 1
 
