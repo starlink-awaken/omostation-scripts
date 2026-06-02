@@ -23,6 +23,7 @@ try:
     from scripts.omo_debt_metrics import compute_debt_metrics
     from scripts.omo_debt_owner_routing import build_owner_routing_packet
     from scripts.omo_debt_reporting import build_reporting_packet, render_reporting_markdown
+    from scripts.omo_debt_reporting_diff import build_reporting_diff_packet, render_reporting_diff_markdown
     from scripts.omo_debt_reporting_history import build_reporting_history_packet, render_reporting_history_markdown
     from scripts.omo_debt_registry import DebtItem, load_debt_ledger
     from scripts.omo_debt_review_queue import build_review_queue
@@ -42,6 +43,7 @@ except ModuleNotFoundError:
     from omo_debt_metrics import compute_debt_metrics
     from omo_debt_owner_routing import build_owner_routing_packet
     from omo_debt_reporting import build_reporting_packet, render_reporting_markdown
+    from omo_debt_reporting_diff import build_reporting_diff_packet, render_reporting_diff_markdown
     from omo_debt_reporting_history import build_reporting_history_packet, render_reporting_history_markdown
     from omo_debt_registry import DebtItem, load_debt_ledger
     from omo_debt_review_queue import build_review_queue
@@ -374,6 +376,34 @@ def write_reporting_history_packet(omo_dir: Path, history_packet: dict[str, obje
     current_md_path.write_text(markdown, encoding="utf-8")
 
 
+def write_reporting_diff_packet(omo_dir: Path, diff_packet: dict[str, object]) -> None:
+    diff_dir = omo_dir / "debt" / "reporting" / "diff"
+    markdown = render_reporting_diff_markdown(diff_packet)
+    _write_yaml(diff_dir / "current.yaml", diff_packet)
+    current_md_path = diff_dir / "current.md"
+    current_md_path.parent.mkdir(parents=True, exist_ok=True)
+    current_md_path.write_text(markdown, encoding="utf-8")
+
+
+def load_reporting_history_packet(omo_dir: Path) -> dict[str, object]:
+    history_path = omo_dir / "debt" / "reporting" / "history" / "current.yaml"
+    if not history_path.exists():
+        raise FileNotFoundError(f"missing reporting history packet: {history_path}")
+    history_packet = _load_yaml(history_path)
+    if not history_packet:
+        raise ValueError(f"empty reporting history packet: {history_path}")
+    return history_packet
+
+
+def _history_run_ref(history_packet: dict[str, object], run_stamp: str | None) -> str | None:
+    if run_stamp is None:
+        return None
+    for entry in history_packet["runs"]:
+        if entry["run_stamp"] == run_stamp:
+            return entry["dispatch_run_ref"]
+    raise ValueError(f"missing history run entry for: {run_stamp}")
+
+
 def _reporting_history_inputs(
     omo_dir: Path,
 ) -> tuple[tuple[dict[str, str], ...], dict[str, dict[str, object]]]:
@@ -529,6 +559,24 @@ def reporting_history_outputs(omo_dir: Path) -> None:
     )
 
 
+def reporting_diff_outputs(omo_dir: Path) -> None:
+    history_packet = load_reporting_history_packet(omo_dir)
+    latest_run_ref = _history_run_ref(history_packet, history_packet.get("latest_run_stamp"))
+    if latest_run_ref is None:
+        raise ValueError("reporting history is missing latest_run_stamp")
+    prior_run_ref = _history_run_ref(history_packet, history_packet.get("prior_run_stamp"))
+    latest_reporting = build_reporting_packet(build_selected_campaign_packet(omo_dir, latest_run_ref))
+    prior_reporting = build_reporting_packet(build_selected_campaign_packet(omo_dir, prior_run_ref)) if prior_run_ref else None
+    write_reporting_diff_packet(
+        omo_dir,
+        build_reporting_diff_packet(
+            generated_at=_timestamp(),
+            latest_packet=latest_reporting,
+            prior_packet=prior_reporting,
+        ),
+    )
+
+
 def require_dispatch_bound_revalidate(
     omo_dir: Path,
     item_id: str,
@@ -654,6 +702,9 @@ def main() -> int:
     report_history_parser = subparsers.add_parser("report-history")
     report_history_parser.add_argument("--omo-dir", default=".omo")
 
+    report_diff_parser = subparsers.add_parser("report-diff")
+    report_diff_parser.add_argument("--omo-dir", default=".omo")
+
     reclassify_parser = subparsers.add_parser("reclassify")
     reclassify_parser.add_argument("--omo-dir", default=".omo")
     reclassify_parser.add_argument("--id", required=True)
@@ -724,6 +775,11 @@ def main() -> int:
     if args.command == "report-history":
         reporting_history_outputs(omo_dir)
         print("generated debt reporting history packet")
+        return 0
+
+    if args.command == "report-diff":
+        reporting_diff_outputs(omo_dir)
+        print("generated debt reporting diff packet")
         return 0
 
     if args.command == "reclassify":
