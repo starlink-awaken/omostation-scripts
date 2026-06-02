@@ -11,11 +11,17 @@ import yaml
 
 try:
     from scripts.omo_admission import evaluate_worker_envelope, request_conditional_approval
+    from scripts.omo_governance import propose_truth_mutation
     from scripts.omo_io import write_text_atomic, write_yaml_atomic
     from scripts.omo_handoff_index import write_handoff_index
     from scripts.omo_metrics import write_worker_utilization_summary
     from scripts.omo_promotion_approval import evaluate_promotion_approval
     from scripts.omo_promotion_history import build_promotion_history
+    from scripts.omo_promotion_request import (
+        build_promotion_approval_proposal,
+        build_promotion_approval_request,
+        promotion_approval_ref,
+    )
     from scripts.omo_promotion_readiness import (
         build_promotion_readiness_packet,
         render_promotion_readiness_markdown,
@@ -26,11 +32,17 @@ try:
     from scripts.omo_task_schema import validate_active_tasks, validate_planned_tasks, validate_task_file
 except ModuleNotFoundError:
     from omo_admission import evaluate_worker_envelope, request_conditional_approval
+    from omo_governance import propose_truth_mutation
     from omo_io import write_text_atomic, write_yaml_atomic
     from omo_handoff_index import write_handoff_index
     from omo_metrics import write_worker_utilization_summary
     from omo_promotion_approval import evaluate_promotion_approval
     from omo_promotion_history import build_promotion_history
+    from omo_promotion_request import (
+        build_promotion_approval_proposal,
+        build_promotion_approval_request,
+        promotion_approval_ref,
+    )
     from omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
     from omo_rules import evaluate_rule_bundle
     from omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
@@ -733,6 +745,10 @@ def _promotion_stamp(now: str) -> str:
     return now.replace(":", "-")
 
 
+def _task_has_task_specific_promotion_approval(approval_ref: str | None) -> bool:
+    return bool(approval_ref and approval_ref.endswith(".yaml") and "-promotion-approval-" in approval_ref)
+
+
 def _sync_omo_state(root: Path, omo_dir: str | Path) -> None:
     subprocess.run(
         ["python3", "scripts/sync_omo_state.py", "--omo-dir", str(omo_dir)],
@@ -804,6 +820,46 @@ def _apply_task_promotion(root: Path, task_id: str, promoted_by: str, now: str, 
         return 1
 
     print(f"promotion_ref={envelope_rel} task_ref={Path(omo_dir) / 'tasks' / 'active' / planned_path.name}")
+    return 0
+
+
+def _request_task_promotion_approval(
+    root: Path,
+    task_id: str,
+    requested_by: str,
+    now: str,
+    omo_dir: str | Path = ".omo",
+) -> int:
+    omo = _omo_path(root, omo_dir)
+    task_path = _find_planned_task_file(omo / "tasks" / "planned", task_id)
+    task = _load_yaml(task_path)
+    if not task.get("human_approval_required"):
+        raise ValueError("task does not require human approval")
+    if task.get("status") not in {"candidate", "pending"}:
+        raise ValueError("task must remain candidate or pending before requesting promotion approval")
+    if _task_has_task_specific_promotion_approval(task.get("approval_ref")):
+        raise ValueError("task already points to a task-specific promotion approval")
+
+    approval_ref = promotion_approval_ref(task_id, now)
+    approval_record = build_promotion_approval_request(
+        task_id=task_id,
+        task_ref=str(task_path.relative_to(root)),
+        requested_operation_level=str(task["risk_level"]),
+        requested_at=now,
+        approval_ref=approval_ref,
+    )
+    proposal = build_promotion_approval_proposal(
+        task_id=task_id,
+        requested_by=requested_by,
+        approval_ref=approval_ref,
+    )
+    proposal_record = propose_truth_mutation(root, proposal, now=now)
+
+    _write_yaml(root / approval_ref, approval_record)
+    task["approval_ref"] = approval_ref
+    _write_yaml(task_path, task)
+    proposal_ref = Path(omo_dir) / "_truth" / "task-center" / "proposals" / f"{proposal_record['id']}.yaml"
+    print(f"approval_ref={approval_ref} proposal_ref={proposal_ref}")
     return 0
 
 
@@ -935,6 +991,11 @@ def main() -> int:
     promotion_readiness_parser = task_sub.add_parser("promotion-readiness")
     promotion_readiness_parser.add_argument("--omo-dir", default=".omo")
     promotion_readiness_parser.add_argument("--now")
+    promotion_request_parser = task_sub.add_parser("promotion-request-approval")
+    promotion_request_parser.add_argument("task_id")
+    promotion_request_parser.add_argument("--requested-by", required=True)
+    promotion_request_parser.add_argument("--now", required=True)
+    promotion_request_parser.add_argument("--omo-dir", default=".omo")
 
     args = parser.parse_args()
 
@@ -1040,6 +1101,15 @@ def main() -> int:
 
     if args.command == "task" and args.task_command == "promotion-readiness":
         return _write_task_promotion_readiness(Path.cwd(), omo_dir=args.omo_dir, now=args.now)
+
+    if args.command == "task" and args.task_command == "promotion-request-approval":
+        return _request_task_promotion_approval(
+            Path.cwd(),
+            args.task_id,
+            requested_by=args.requested_by,
+            now=args.now,
+            omo_dir=args.omo_dir,
+        )
 
     return 1
 
