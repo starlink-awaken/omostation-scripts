@@ -708,6 +708,84 @@ def _print_task_promotion_eval(root: Path, task_id: str, omo_dir: str | Path = "
     return 0 if result["eligible"] else 1
 
 
+def _promotion_stamp(now: str) -> str:
+    return now.replace(":", "-")
+
+
+def _sync_omo_state(root: Path, omo_dir: str | Path) -> None:
+    subprocess.run(
+        ["python3", "scripts/sync_omo_state.py", "--omo-dir", str(omo_dir)],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _apply_task_promotion(root: Path, task_id: str, promoted_by: str, now: str, omo_dir: str | Path = ".omo") -> int:
+    result = _promotion_eval(root, task_id, omo_dir=omo_dir)
+    if not result["eligible"]:
+        print(f"task_id={task_id} eligible=false blockers={','.join(result['blockers'])}")
+        return 1
+
+    omo = _omo_path(root, omo_dir)
+    planned_path = root / result["task_ref"]
+    active_path = omo / "tasks" / "active" / planned_path.name
+    task = _load_yaml(planned_path)
+    stamp = _promotion_stamp(now)
+    envelope_rel = Path(omo_dir) / "workers" / "runs" / f"{task_id}-promotion-{stamp}.yaml"
+    envelope_path = root / envelope_rel
+    envelope = {
+        "version": 1,
+        "promotion_id": f"{task_id}-promotion-{stamp}",
+        "task_id": task_id,
+        "task_ref_before": str(Path(omo_dir) / "tasks" / "planned" / planned_path.name),
+        "task_ref_after": str(Path(omo_dir) / "tasks" / "active" / planned_path.name),
+        "promotion_status": "approved",
+        "promoted_by": promoted_by,
+        "promoted_at": now,
+        "phase_gate": {
+            "current_phase": int(_load_yaml(omo / "goals" / "current.yaml")["phase"]),
+            "target_phase": task["phase"],
+            "allowed_by_rule": True,
+        },
+        "approval": {
+            "required": bool(task.get("human_approval_required")),
+            "approval_ref": task.get("approval_ref"),
+        },
+        "checks": result["checks"],
+        "rollback": {
+            "supported": True,
+            "rollback_action": "move task back to planned and rerun sync",
+        },
+        "refs": {
+            "state_ref": str(Path(omo_dir) / "state" / "system.yaml"),
+            "goals_ref": str(Path(omo_dir) / "goals" / "current.yaml"),
+        },
+    }
+    _write_yaml(envelope_path, envelope)
+
+    original_handoffs = list(task.get("handoff_refs", []))
+    task["handoff_refs"] = _append_unique(original_handoffs, [str(envelope_rel)])
+    _write_yaml(planned_path, task)
+
+    active_path.parent.mkdir(parents=True, exist_ok=True)
+    planned_path.replace(active_path)
+    try:
+        _sync_omo_state(root, omo_dir)
+    except subprocess.CalledProcessError:
+        active_task = _load_yaml(active_path)
+        active_task["handoff_refs"] = original_handoffs
+        _write_yaml(active_path, active_task)
+        active_path.replace(planned_path)
+        envelope_path.unlink(missing_ok=True)
+        print(f"task_id={task_id} promoted=false blockers=sync_failed")
+        return 1
+
+    print(f"promotion_ref={envelope_rel} task_ref={Path(omo_dir) / 'tasks' / 'active' / planned_path.name}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="omo")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -771,6 +849,11 @@ def main() -> int:
     promote_eval_parser = task_sub.add_parser("promote-eval")
     promote_eval_parser.add_argument("task_id")
     promote_eval_parser.add_argument("--omo-dir", default=".omo")
+    promote_apply_parser = task_sub.add_parser("promote-apply")
+    promote_apply_parser.add_argument("task_id")
+    promote_apply_parser.add_argument("--promoted-by", required=True)
+    promote_apply_parser.add_argument("--now", required=True)
+    promote_apply_parser.add_argument("--omo-dir", default=".omo")
 
     args = parser.parse_args()
 
@@ -861,6 +944,15 @@ def main() -> int:
 
     if args.command == "task" and args.task_command == "promote-eval":
         return _print_task_promotion_eval(Path.cwd(), args.task_id, omo_dir=args.omo_dir)
+
+    if args.command == "task" and args.task_command == "promote-apply":
+        return _apply_task_promotion(
+            Path.cwd(),
+            args.task_id,
+            promoted_by=args.promoted_by,
+            now=args.now,
+            omo_dir=args.omo_dir,
+        )
 
     return 1
 
