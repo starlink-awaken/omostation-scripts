@@ -468,4 +468,28 @@ def render_reporting_trend_markdown(packet: dict[str, object]) -> str:
                     "",
                 ]
             )
+    state_progress = packet.get("state_progress")
+    if state_progress is not None:
+        lines.extend(
+            [
+                "## State Progress",
+                "",
+                f"state_progress_status={state_progress['state_progress_status']}",
+                f"anchor_run_stamp={state_progress['anchor_run_stamp']}",
+                f"baseline_pending_approval={state_progress['baseline_pending_approval']}",
+                "",
+            ]
+        )
+        for run in state_progress["runs"]:
+            lines.extend(
+                [
+                    f"### State Run: {run['run_stamp']}",
+                    "",
+                    f"pending_approval={run['pending_approval']}",
+                    f"ready_to_execute={run['ready_to_execute']}",
+                    f"executed={run['executed']}",
+                    f"pending_approval_delta_vs_baseline={run['pending_approval_delta_vs_baseline']}",
+                    "",
+                ]
+            )
     return "\n".join(lines)
