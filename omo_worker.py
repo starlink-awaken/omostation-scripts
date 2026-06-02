@@ -14,6 +14,7 @@ try:
     from scripts.omo_io import write_text_atomic, write_yaml_atomic
     from scripts.omo_handoff_index import write_handoff_index
     from scripts.omo_metrics import write_worker_utilization_summary
+    from scripts.omo_promotion_history import build_promotion_history
     from scripts.omo_rules import evaluate_rule_bundle
     from scripts.omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
     from scripts.omo_redaction import redact_sensitive_text
@@ -23,6 +24,7 @@ except ModuleNotFoundError:
     from omo_io import write_text_atomic, write_yaml_atomic
     from omo_handoff_index import write_handoff_index
     from omo_metrics import write_worker_utilization_summary
+    from omo_promotion_history import build_promotion_history
     from omo_rules import evaluate_rule_bundle
     from omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
     from omo_redaction import redact_sensitive_text
@@ -786,6 +788,20 @@ def _apply_task_promotion(root: Path, task_id: str, promoted_by: str, now: str, 
     return 0
 
 
+def _write_task_promotion_history(root: Path, omo_dir: str | Path = ".omo") -> int:
+    result = build_promotion_history(root, omo_dir=omo_dir, now=_utc_now())
+    omo = _omo_path(root, omo_dir)
+    current_yaml = omo / "workers" / "promotion" / "current.yaml"
+    current_md = omo / "workers" / "promotion" / "current.md"
+    _write_yaml(current_yaml, result["yaml"])
+    write_text_atomic(current_md, result["markdown"])
+    print(
+        f"promotion_count={result['yaml']['promotion_count']} "
+        f"latest_promotion_ref={result['yaml']['latest_promotion_ref']}"
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="omo")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -854,6 +870,8 @@ def main() -> int:
     promote_apply_parser.add_argument("--promoted-by", required=True)
     promote_apply_parser.add_argument("--now", required=True)
     promote_apply_parser.add_argument("--omo-dir", default=".omo")
+    promotion_history_parser = task_sub.add_parser("promotion-history")
+    promotion_history_parser.add_argument("--omo-dir", default=".omo")
 
     args = parser.parse_args()
 
@@ -953,6 +971,9 @@ def main() -> int:
             now=args.now,
             omo_dir=args.omo_dir,
         )
+
+    if args.command == "task" and args.task_command == "promotion-history":
+        return _write_task_promotion_history(Path.cwd(), omo_dir=args.omo_dir)
 
     return 1
 
