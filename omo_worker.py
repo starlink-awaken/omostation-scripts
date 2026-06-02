@@ -26,6 +26,7 @@ try:
         build_promotion_approval_status_packet,
         render_promotion_approval_status_markdown,
     )
+    from scripts.omo_promotion_approval_history import build_promotion_approval_history
     from scripts.omo_promotion_readiness import (
         build_promotion_readiness_packet,
         render_promotion_readiness_markdown,
@@ -51,6 +52,7 @@ except ModuleNotFoundError:
         build_promotion_approval_status_packet,
         render_promotion_approval_status_markdown,
     )
+    from omo_promotion_approval_history import build_promotion_approval_history
     from omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
     from omo_rules import evaluate_rule_bundle
     from omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
@@ -986,6 +988,17 @@ def _write_task_promotion_approval_status(
     return 0
 
 
+def _write_task_promotion_approval_history(root: Path, omo_dir: str | Path = ".omo", now: str | None = None) -> int:
+    result = build_promotion_approval_history(root, omo_dir=omo_dir, now=now or _utc_now())
+    omo = _omo_path(root, omo_dir)
+    history_dir = omo / "workers" / "promotion" / "approvals" / "history"
+    history_dir.mkdir(parents=True, exist_ok=True)
+    _write_yaml(history_dir / "current.yaml", result["yaml"])
+    write_text_atomic(history_dir / "current.md", result["markdown"])
+    print(f"approval_count={result['yaml']['approval_count']} latest_approval_ref={result['yaml']['latest_approval_ref']}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="omo")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1069,6 +1082,9 @@ def main() -> int:
     promotion_approval_status_parser.add_argument("--omo-dir", default=".omo")
     promotion_approval_status_parser.add_argument("--task-id")
     promotion_approval_status_parser.add_argument("--now")
+    promotion_approval_history_parser = task_sub.add_parser("promotion-approval-history")
+    promotion_approval_history_parser.add_argument("--omo-dir", default=".omo")
+    promotion_approval_history_parser.add_argument("--now")
 
     args = parser.parse_args()
 
@@ -1191,6 +1207,9 @@ def main() -> int:
             now=args.now,
             task_id=args.task_id,
         )
+
+    if args.command == "task" and args.task_command == "promotion-approval-history":
+        return _write_task_promotion_approval_history(Path.cwd(), omo_dir=args.omo_dir, now=args.now)
 
     return 1
 
