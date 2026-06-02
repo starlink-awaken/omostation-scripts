@@ -23,6 +23,7 @@ try:
     from scripts.omo_debt_metrics import compute_debt_metrics
     from scripts.omo_debt_owner_routing import build_owner_routing_packet
     from scripts.omo_debt_reporting import build_reporting_packet, render_reporting_markdown
+    from scripts.omo_debt_reporting_history import build_reporting_history_packet, render_reporting_history_markdown
     from scripts.omo_debt_registry import DebtItem, load_debt_ledger
     from scripts.omo_debt_review_queue import build_review_queue
 except ModuleNotFoundError:
@@ -41,6 +42,7 @@ except ModuleNotFoundError:
     from omo_debt_metrics import compute_debt_metrics
     from omo_debt_owner_routing import build_owner_routing_packet
     from omo_debt_reporting import build_reporting_packet, render_reporting_markdown
+    from omo_debt_reporting_history import build_reporting_history_packet, render_reporting_history_markdown
     from omo_debt_registry import DebtItem, load_debt_ledger
     from omo_debt_review_queue import build_review_queue
 
@@ -363,6 +365,45 @@ def write_reporting_packet(omo_dir: Path, reporting_packet: dict[str, object]) -
     current_md_path.write_text(markdown, encoding="utf-8")
 
 
+def write_reporting_history_packet(omo_dir: Path, history_packet: dict[str, object]) -> None:
+    history_dir = omo_dir / "debt" / "reporting" / "history"
+    markdown = render_reporting_history_markdown(history_packet)
+    _write_yaml(history_dir / "current.yaml", history_packet)
+    current_md_path = history_dir / "current.md"
+    current_md_path.parent.mkdir(parents=True, exist_ok=True)
+    current_md_path.write_text(markdown, encoding="utf-8")
+
+
+def _reporting_history_inputs(
+    omo_dir: Path,
+) -> tuple[tuple[dict[str, str], ...], dict[str, dict[str, object]]]:
+    dispatch_runs_dir = omo_dir / "debt" / "dispatch" / "runs"
+    run_paths = sorted(dispatch_runs_dir.glob("*.yaml"))
+    if not run_paths:
+        raise FileNotFoundError(f"no dispatch run artifacts found: {dispatch_runs_dir}")
+
+    dispatch_runs: list[dict[str, str]] = []
+    reporting_packets_by_run: dict[str, dict[str, object]] = {}
+    for run_path in run_paths:
+        run_stamp = run_path.stem
+        dispatch_runs.append(
+            {
+                "run_stamp": run_stamp,
+                "dispatch_run_ref": f".omo/debt/dispatch/runs/{run_path.name}",
+            }
+        )
+        reporting_path = omo_dir / "debt" / "reporting" / "runs" / run_stamp / "current.yaml"
+        if not reporting_path.exists():
+            continue
+        reporting_packet = _load_yaml(reporting_path)
+        if not reporting_packet:
+            raise ValueError(f"empty reporting run artifact: {reporting_path}")
+        if reporting_packet.get("run_stamp") != run_stamp:
+            raise ValueError(f"reporting run stamp mismatch: {reporting_path}")
+        reporting_packets_by_run[run_stamp] = reporting_packet
+    return tuple(dispatch_runs), reporting_packets_by_run
+
+
 def write_review_pack(
     omo_dir: Path,
     items: tuple[DebtItem, ...],
@@ -474,6 +515,18 @@ def campaign_outputs(omo_dir: Path, run_ref: str | None) -> None:
 def reporting_outputs(omo_dir: Path, run_ref: str | None) -> None:
     campaign_packet = build_selected_campaign_packet(omo_dir, run_ref)
     write_reporting_packet(omo_dir, build_reporting_packet(campaign_packet))
+
+
+def reporting_history_outputs(omo_dir: Path) -> None:
+    dispatch_runs, reporting_packets_by_run = _reporting_history_inputs(omo_dir)
+    write_reporting_history_packet(
+        omo_dir,
+        build_reporting_history_packet(
+            generated_at=_timestamp(),
+            dispatch_runs=dispatch_runs,
+            reporting_packets_by_run=reporting_packets_by_run,
+        ),
+    )
 
 
 def require_dispatch_bound_revalidate(
@@ -598,6 +651,9 @@ def main() -> int:
     report_parser.add_argument("--omo-dir", default=".omo")
     report_parser.add_argument("--run-ref")
 
+    report_history_parser = subparsers.add_parser("report-history")
+    report_history_parser.add_argument("--omo-dir", default=".omo")
+
     reclassify_parser = subparsers.add_parser("reclassify")
     reclassify_parser.add_argument("--omo-dir", default=".omo")
     reclassify_parser.add_argument("--id", required=True)
@@ -663,6 +719,11 @@ def main() -> int:
     if args.command == "report":
         reporting_outputs(omo_dir, args.run_ref)
         print("generated debt reporting packet")
+        return 0
+
+    if args.command == "report-history":
+        reporting_history_outputs(omo_dir)
+        print("generated debt reporting history packet")
         return 0
 
     if args.command == "reclassify":
