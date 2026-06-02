@@ -17,8 +17,9 @@ try:
         approval_paths,
     )
     from scripts.omo_debt_action_packet import build_action_packet
+    from scripts.omo_debt_campaign import build_campaign_packet, render_campaign_markdown
     from scripts.omo_debt_dispatch import build_dispatch_packet
-    from scripts.omo_debt_execution import build_execution_record, execution_record_path
+    from scripts.omo_debt_execution import build_execution_record, execution_record_path, run_slug_from_ref
     from scripts.omo_debt_metrics import compute_debt_metrics
     from scripts.omo_debt_owner_routing import build_owner_routing_packet
     from scripts.omo_debt_registry import DebtItem, load_debt_ledger
@@ -33,8 +34,9 @@ except ModuleNotFoundError:
         approval_paths,
     )
     from omo_debt_action_packet import build_action_packet
+    from omo_debt_campaign import build_campaign_packet, render_campaign_markdown
     from omo_debt_dispatch import build_dispatch_packet
-    from omo_debt_execution import build_execution_record, execution_record_path
+    from omo_debt_execution import build_execution_record, execution_record_path, run_slug_from_ref
     from omo_debt_metrics import compute_debt_metrics
     from omo_debt_owner_routing import build_owner_routing_packet
     from omo_debt_registry import DebtItem, load_debt_ledger
@@ -314,6 +316,38 @@ def write_dispatch_packet(omo_dir: Path, dispatch_packet: dict[str, object]) -> 
     run_md_path.write_text(markdown, encoding="utf-8")
 
 
+def _matching_approval_exists(omo_dir: Path, item_id: str, dispatch_run_ref: str) -> bool:
+    approval_path = approval_current_path(omo_dir, item_id)
+    if not approval_path.exists():
+        return False
+    approval_record = _load_yaml(approval_path)
+    return (
+        bool(approval_record)
+        and approval_record.get("approval_scope") == APPROVAL_SCOPE_EXECUTE_REVALIDATE
+        and approval_record.get("dispatch_run_ref") == dispatch_run_ref
+    )
+
+
+def _execution_record_ref(omo_dir: Path, dispatch_run_ref: str, item_id: str) -> str | None:
+    record_path = execution_record_path(omo_dir, dispatch_run_ref, item_id)
+    if not record_path.exists():
+        return None
+    return f".omo/debt/dispatch/executions/{run_slug_from_ref(dispatch_run_ref)}/{item_id}.yaml"
+
+
+def write_campaign_packet(omo_dir: Path, campaign_packet: dict[str, object]) -> None:
+    markdown = render_campaign_markdown(campaign_packet)
+    run_dir = omo_dir / "debt" / "campaign" / "runs" / campaign_packet["run_stamp"]
+    _write_yaml(run_dir / "current.yaml", campaign_packet)
+    run_md_path = run_dir / "current.md"
+    run_md_path.parent.mkdir(parents=True, exist_ok=True)
+    run_md_path.write_text(markdown, encoding="utf-8")
+    _write_yaml(omo_dir / "debt" / "campaign" / "current.yaml", campaign_packet)
+    current_md_path = omo_dir / "debt" / "campaign" / "current.md"
+    current_md_path.parent.mkdir(parents=True, exist_ok=True)
+    current_md_path.write_text(markdown, encoding="utf-8")
+
+
 def write_review_pack(
     omo_dir: Path,
     items: tuple[DebtItem, ...],
@@ -386,6 +420,35 @@ def load_dispatch_run(omo_dir: Path, dispatch_run_ref: str) -> tuple[Path, dict]
     if not run_packet:
         raise ValueError(f"empty dispatch run artifact: {run_path}")
     return run_path, run_packet
+
+
+def campaign_outputs(omo_dir: Path, run_ref: str | None) -> None:
+    if run_ref:
+        _, run_packet = load_dispatch_run(omo_dir, run_ref)
+        dispatch_run_ref = run_ref
+    else:
+        dispatch_packet = load_dispatch_packet(omo_dir)
+        dispatch_run_ref = dispatch_packet["latest_run_ref"]
+        _, run_packet = load_dispatch_run(omo_dir, dispatch_run_ref)
+
+    approval_lookup: dict[str, bool] = {}
+    execution_lookup: dict[str, str] = {}
+    for owner_packet in run_packet["owners"]:
+        for entry in owner_packet["entries"]:
+            item_id = entry["id"]
+            approval_lookup[item_id] = _matching_approval_exists(omo_dir, item_id, dispatch_run_ref)
+            execution_record_ref = _execution_record_ref(omo_dir, dispatch_run_ref, item_id)
+            if execution_record_ref:
+                execution_lookup[item_id] = execution_record_ref
+
+    campaign_packet = build_campaign_packet(
+        run_packet=run_packet,
+        dispatch_run_ref=dispatch_run_ref,
+        generated_at=_timestamp(),
+        approval_lookup=approval_lookup,
+        execution_lookup=execution_lookup,
+    )
+    write_campaign_packet(omo_dir, campaign_packet)
 
 
 def require_dispatch_bound_revalidate(
@@ -502,6 +565,10 @@ def main() -> int:
     approve_parser.add_argument("--scope", required=True)
     approve_parser.add_argument("--approved-at", required=True)
 
+    campaign_parser = subparsers.add_parser("campaign")
+    campaign_parser.add_argument("--omo-dir", default=".omo")
+    campaign_parser.add_argument("--run-ref")
+
     reclassify_parser = subparsers.add_parser("reclassify")
     reclassify_parser.add_argument("--omo-dir", default=".omo")
     reclassify_parser.add_argument("--id", required=True)
@@ -557,6 +624,11 @@ def main() -> int:
     if args.command == "approve":
         approve_item(omo_dir, args.id, args.approved_by, args.scope, args.approved_at)
         print(f"approved {args.id}")
+        return 0
+
+    if args.command == "campaign":
+        campaign_outputs(omo_dir, args.run_ref)
+        print("generated debt campaign packet")
         return 0
 
     if args.command == "reclassify":
