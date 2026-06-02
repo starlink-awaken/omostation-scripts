@@ -28,6 +28,7 @@ try:
     )
     from scripts.omo_promotion_approval_history import build_promotion_approval_history
     from scripts.omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
+    from scripts.omo_governance_overlay import build_governance_overlay_status
     from scripts.omo_promotion_readiness import (
         build_promotion_readiness_packet,
         render_promotion_readiness_markdown,
@@ -55,6 +56,7 @@ except ModuleNotFoundError:
     )
     from omo_promotion_approval_history import build_promotion_approval_history
     from omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
+    from omo_governance_overlay import build_governance_overlay_status
     from omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
     from omo_rules import evaluate_rule_bundle
     from omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
@@ -1017,6 +1019,22 @@ def _write_task_promotion_approval_analytics(root: Path, omo_dir: str | Path = "
     return 0
 
 
+def _write_task_governance_overlay_status(root: Path, omo_dir: str | Path = ".omo", now: str | None = None) -> int:
+    result = build_governance_overlay_status(root, omo_dir=omo_dir, now=now or _utc_now())
+    omo = _omo_path(root, omo_dir)
+    output_dir = omo / "workers" / "governance-overlay"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _write_yaml(output_dir / "current.yaml", result["yaml"])
+    write_text_atomic(output_dir / "current.md", result["markdown"])
+    print(
+        "eligible_count="
+        f"{result['yaml']['eligible_count']} "
+        f"blocked_count={result['yaml']['blocked_count']} "
+        f"next_action={result['yaml']['next_action']}"
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="omo")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1106,6 +1124,9 @@ def main() -> int:
     promotion_approval_analytics_parser = task_sub.add_parser("promotion-approval-analytics")
     promotion_approval_analytics_parser.add_argument("--omo-dir", default=".omo")
     promotion_approval_analytics_parser.add_argument("--now")
+    governance_overlay_status_parser = task_sub.add_parser("governance-overlay-status")
+    governance_overlay_status_parser.add_argument("--omo-dir", default=".omo")
+    governance_overlay_status_parser.add_argument("--now")
 
     args = parser.parse_args()
 
@@ -1234,6 +1255,9 @@ def main() -> int:
 
     if args.command == "task" and args.task_command == "promotion-approval-analytics":
         return _write_task_promotion_approval_analytics(Path.cwd(), omo_dir=args.omo_dir, now=args.now)
+
+    if args.command == "task" and args.task_command == "governance-overlay-status":
+        return _write_task_governance_overlay_status(Path.cwd(), omo_dir=args.omo_dir, now=args.now)
 
     return 1
 
