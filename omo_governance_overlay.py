@@ -19,6 +19,45 @@ def _missing_target_refs(root: Path, refs: list[str]) -> list[str]:
     return [ref for ref in refs if not (root / ref).exists()]
 
 
+def _load_optional_yaml(path: Path) -> dict[str, object] | None:
+    if not path.exists():
+        return None
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def _dispatch_payload(root: Path, run_ref: str | None) -> dict[str, object] | None:
+    if not run_ref:
+        return None
+    return _load_optional_yaml(root / run_ref)
+
+
+def _derived_allowed_write_paths(task: dict[str, object]) -> list[str]:
+    paths: list[str] = []
+    for deliverable in task.get("deliverables", []):
+        path = str(deliverable)
+        if path.endswith("/"):
+            candidate = path
+        else:
+            candidate = str(Path(path).parent)
+            if candidate == ".":
+                candidate = path
+            elif not candidate.endswith("/"):
+                candidate = f"{candidate}/"
+        if candidate not in paths:
+            paths.append(candidate)
+    return paths
+
+
+def _launch_contract_state(task: dict[str, object], dispatch: dict[str, object] | None) -> tuple[str, str]:
+    deliverables = list(task.get("deliverables", []))
+    allowed_paths = _derived_allowed_write_paths(task)
+    if not deliverables or not allowed_paths:
+        return ("contract_gap", "dispatch exists but task has no launch-ready write scope")
+    if dispatch and dispatch.get("dispatch_state") == "dispatched":
+        return ("dispatch_only", "dispatch exists and task is ready for launch")
+    return ("launch_ready", "task has explicit launch-ready write scope")
+
+
 def _target_state(root: Path, target_ref: str, *, omo_dir: str | Path = ".omo") -> dict[str, object]:
     if not target_ref.startswith(".omo/tasks/planned/"):
         return {
@@ -50,6 +89,24 @@ def _target_state(root: Path, target_ref: str, *, omo_dir: str | Path = ".omo") 
                 "detail": f"task currently exists in tasks/{directory}/",
             }
         status = str(task.get("status", "pending"))
+        dispatch = _dispatch_payload(root, str(task.get("run_ref")) if task.get("run_ref") else None)
+        if status == "in_progress" and dispatch:
+            contract_state, detail = _launch_contract_state(task, dispatch)
+            dispatch_state = str(dispatch.get("dispatch_state"))
+            if dispatch_state == "dispatched" and contract_state == "contract_gap":
+                return {
+                    "target_ref": target_ref,
+                    "task_id": task_id,
+                    "state": "active_dispatch_blocked",
+                    "detail": detail,
+                }
+            if dispatch_state == "dispatched":
+                return {
+                    "target_ref": target_ref,
+                    "task_id": task_id,
+                    "state": "active_dispatched",
+                    "detail": detail,
+                }
         active_state = {
             "pending": "active_pending",
             "in_progress": "active_in_progress",
@@ -140,6 +197,12 @@ def build_governance_overlay_status(root: Path, *, omo_dir: str | Path = ".omo",
         if any(target["state"] == "active_pending" for target in active_target_states):
             first_pending = next(target for target in active_target_states if target["state"] == "active_pending")
             next_action = f"dispatch:{first_pending['task_id']}"
+        elif any(target["state"] == "active_dispatch_blocked" for target in active_target_states):
+            blocked = next(target for target in active_target_states if target["state"] == "active_dispatch_blocked")
+            next_action = f"contract:{blocked['task_id']}"
+        elif any(target["state"] == "active_dispatched" for target in active_target_states):
+            dispatched = next(target for target in active_target_states if target["state"] == "active_dispatched")
+            next_action = f"launch:{dispatched['task_id']}"
         elif any(target["state"] == "active_review" for target in active_target_states):
             first_review = next(target for target in active_target_states if target["state"] == "active_review")
             next_action = f"verify:{first_review['task_id']}"
