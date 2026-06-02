@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+try:
+    from scripts.omo_debt_reporting_history import _validate_run_stamp
+except ModuleNotFoundError:
+    from omo_debt_reporting_history import _validate_run_stamp
+
 
 def _trend_run(entry: dict[str, object]) -> dict[str, object]:
     if not entry["reporting_exists"] or any(
@@ -34,13 +39,56 @@ def _interval(previous: dict[str, object], current: dict[str, object]) -> dict[s
     }
 
 
+def _run_index(runs: list[dict[str, object]], run_stamp: str, *, label: str) -> int:
+    for index, entry in enumerate(runs):
+        if entry["run_stamp"] == run_stamp:
+            return index
+    raise ValueError(f"{label} not in history: {run_stamp}")
+
+
+def _select_runs(
+    history_packet: dict[str, object],
+    *,
+    window_requested: int | None,
+    from_run_stamp_requested: str | None,
+    to_run_stamp_requested: str | None,
+) -> list[dict[str, object]]:
+    runs = history_packet["runs"]
+    if from_run_stamp_requested is not None or to_run_stamp_requested is not None:
+        if from_run_stamp_requested is None or to_run_stamp_requested is None:
+            raise ValueError("range mode requires both from-run-stamp and to-run-stamp")
+        try:
+            _validate_run_stamp(from_run_stamp_requested)
+        except ValueError as exc:
+            raise ValueError(f"invalid from-run-stamp: {from_run_stamp_requested}") from exc
+        try:
+            _validate_run_stamp(to_run_stamp_requested)
+        except ValueError as exc:
+            raise ValueError(f"invalid to-run-stamp: {to_run_stamp_requested}") from exc
+        to_index = _run_index(runs, to_run_stamp_requested, label="to-run-stamp")
+        from_index = _run_index(runs, from_run_stamp_requested, label="from-run-stamp")
+        if from_index < to_index:
+            raise ValueError("from-run-stamp must not be newer than to-run-stamp")
+        return runs[to_index : from_index + 1]
+    if window_requested is not None:
+        return runs[:window_requested]
+    return runs
+
+
 def build_reporting_trend_packet(
     *,
     generated_at: str,
     history_packet: dict[str, object],
     window_requested: int | None = None,
+    from_run_stamp_requested: str | None = None,
+    to_run_stamp_requested: str | None = None,
 ) -> dict[str, object]:
-    selected_runs = history_packet["runs"][:window_requested] if window_requested is not None else history_packet["runs"]
+    selected_runs = _select_runs(
+        history_packet,
+        window_requested=window_requested,
+        from_run_stamp_requested=from_run_stamp_requested,
+        to_run_stamp_requested=to_run_stamp_requested,
+    )
     ordered_runs = [_trend_run(entry) for entry in reversed(selected_runs)]
     intervals = [
         _interval(ordered_runs[index], ordered_runs[index + 1])
@@ -52,6 +100,8 @@ def build_reporting_trend_packet(
         "generated_at": generated_at,
         "trend_status": "trend_available" if len(ordered_runs) >= 2 else "insufficient_history",
         "window_requested": window_requested,
+        "from_run_stamp_requested": from_run_stamp_requested,
+        "to_run_stamp_requested": to_run_stamp_requested,
         "window_run_count": len(ordered_runs),
         "oldest_run_stamp": oldest_run_stamp,
         "latest_run_stamp": latest_run_stamp,
