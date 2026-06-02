@@ -170,6 +170,47 @@ def _owner_presence(
     }
 
 
+def _execution_progress_run(
+    run: dict[str, object],
+    baseline_open_item_count: int,
+) -> dict[str, object]:
+    open_item_count = int(run["total_items"]) - int(run["executed_item_count"])
+    return {
+        "run_stamp": run["run_stamp"],
+        "open_item_count": open_item_count,
+        "open_item_delta_vs_baseline": open_item_count - baseline_open_item_count,
+        "open_item_ratio_vs_baseline": (
+            None
+            if baseline_open_item_count == 0
+            else open_item_count / baseline_open_item_count
+        ),
+    }
+
+
+def _execution_progress(
+    ordered_runs: list[dict[str, object]],
+) -> dict[str, object] | None:
+    if len(ordered_runs) < 2:
+        return None
+
+    anchor_run = ordered_runs[0]
+    baseline_open_item_count = int(anchor_run["total_items"]) - int(anchor_run["executed_item_count"])
+    progress_runs = [
+        _execution_progress_run(run, baseline_open_item_count)
+        for run in ordered_runs
+    ]
+    return {
+        "progress_status": (
+            "baseline_fully_executed"
+            if baseline_open_item_count == 0
+            else "progress_available"
+        ),
+        "anchor_run_stamp": anchor_run["run_stamp"],
+        "baseline_open_item_count": baseline_open_item_count,
+        "runs": progress_runs,
+    }
+
+
 def _run_index(runs: list[dict[str, object]], run_stamp: str, *, label: str) -> int:
     for index, entry in enumerate(runs):
         if entry["run_stamp"] == run_stamp:
@@ -239,6 +280,7 @@ def build_reporting_trend_packet(
             else None
         ),
     )
+    execution_progress = _execution_progress(ordered_runs)
     return {
         "generated_at": generated_at,
         "trend_status": "trend_available" if len(ordered_runs) >= 2 else "insufficient_history",
@@ -252,6 +294,7 @@ def build_reporting_trend_packet(
         "intervals": intervals,
         "owners": owners,
         "owner_presence": owner_presence,
+        "execution_progress": execution_progress,
     }
 
 
