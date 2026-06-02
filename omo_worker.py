@@ -14,6 +14,7 @@ try:
     from scripts.omo_io import write_text_atomic, write_yaml_atomic
     from scripts.omo_handoff_index import write_handoff_index
     from scripts.omo_metrics import write_worker_utilization_summary
+    from scripts.omo_promotion_approval import evaluate_promotion_approval
     from scripts.omo_promotion_history import build_promotion_history
     from scripts.omo_promotion_readiness import (
         build_promotion_readiness_packet,
@@ -28,6 +29,7 @@ except ModuleNotFoundError:
     from omo_io import write_text_atomic, write_yaml_atomic
     from omo_handoff_index import write_handoff_index
     from omo_metrics import write_worker_utilization_summary
+    from omo_promotion_approval import evaluate_promotion_approval
     from omo_promotion_history import build_promotion_history
     from omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
     from omo_rules import evaluate_rule_bundle
@@ -672,12 +674,22 @@ def _promotion_eval(root: Path, task_id: str, omo_dir: str | Path = ".omo") -> d
     task_file = _find_planned_task_file(omo / "tasks" / "planned", task_id)
     task = _load_yaml(task_file)
     active_target = omo / "tasks" / "active" / task_file.name
+    approval_result = (
+        {"approval_ready": True, "blocker": None}
+        if not task.get("human_approval_required")
+        else evaluate_promotion_approval(
+            root,
+            approval_ref=task.get("approval_ref"),
+            task_id=task_id,
+            task_ref=str(task_file.relative_to(root)),
+        )
+    )
 
     checks = {
         "queue_membership_ok": True,
         "status_ok": task.get("status") in {"candidate", "pending"},
         "phase_ok": task.get("phase") == int(goals["phase"]) + 1,
-        "approval_ready": (not task.get("human_approval_required")) or bool(task.get("approval_ref")),
+        "approval_ready": approval_result["approval_ready"],
         "target_path_clear": not active_target.exists(),
     }
 
@@ -689,8 +701,10 @@ def _promotion_eval(root: Path, task_id: str, omo_dir: str | Path = ".omo") -> d
         blockers.append("status_invalid")
     if not checks["phase_ok"]:
         blockers.append("phase_mismatch")
-    if not checks["approval_ready"]:
+    if approval_result["blocker"] == "approval_missing":
         blockers.append("approval_missing")
+    elif approval_result["blocker"] == "approval_invalid":
+        blockers.append("approval_invalid")
     if not checks["target_path_clear"]:
         blockers.append("target_path_exists")
     if not checks["active_schema_ready"]:
