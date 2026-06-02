@@ -324,40 +324,30 @@ def _looks_like_task_queue_entry(line: str) -> bool:
     return bool(re.fullmatch(r"[A-Z0-9][A-Z0-9._-]*", line))
 
 
-def _next_active_tasks(active_dir: Path, state_next: list[str] | None, omo_ref: Path) -> list[str]:
-    """从 tasks/active/ 目录读取任务列表，保留 state 中的额外描述"""
-    # 从 active/ 目录生成当前动态列表
-    active_tasks = []
-    for task_file in sorted(active_dir.glob("*.yaml")):
+def _queue_preview(group_dir: Path, state_lines: list[str] | None, omo_ref: Path, label: str) -> list[str]:
+    """从任务目录读取队列列表，保留 state 中的额外描述"""
+    task_ids = []
+    for task_file in sorted(group_dir.glob("*.yaml")):
         task = _load_yaml(task_file)
-        task_id = task.get("id", task_file.stem)
-        active_tasks.append(task_id)
+        task_ids.append(task.get("id", task_file.stem))
 
-    # 生成 header
-    if not active_tasks:
-        return ["(No active tasks)"]
-    else:
-        suffix = "task" if len(active_tasks) == 1 else "tasks"
-        header = f"Current active queue from {omo_ref}/tasks/active/ ({len(active_tasks)} {suffix})"
+    if not task_ids:
+        return [f"(No {label} tasks)"]
 
-    # 保留来自 state 的非任务描述（如 "Phase 3 筹备"），
-    # 但去掉与 header 或当前 active_tasks 或空任务占位重复的条目
-    generated_lines = {header, *active_tasks}
-    known_patterns = {header, "(No active tasks)"}
-    if active_tasks:
-        known_patterns.add(f"Current active queue from {omo_ref}/tasks/active/ ({len(active_tasks)} {suffix})")
-    # 也覆盖旧格式（active_count=0 的情况）
-    known_patterns.add(f"Current active queue from {omo_ref}/tasks/active/ (0 tasks)")
-    known_patterns.add(f"Current active queue from {omo_ref}/tasks/active/ (0 task)")
+    suffix = "task" if len(task_ids) == 1 else "tasks"
+    queue_name = group_dir.name
+    header = f"Current {label} queue from {omo_ref}/tasks/{queue_name}/ ({len(task_ids)} {suffix})"
+    header_prefix = f"Current {label} queue from {omo_ref}/tasks/{queue_name}/ ("
     extras = [
-        line for line in (state_next or [])
-        if line not in generated_lines
-        and line not in known_patterns
-        and not any(t in line for t in active_tasks)
+        line
+        for line in (state_lines or [])
+        if not line.startswith(header_prefix)
+        and line not in task_ids
+        and line != f"(No {label} tasks)"
         and not _looks_like_task_queue_entry(line)
     ]
 
-    return [header, *active_tasks, *extras]
+    return [header, *task_ids, *extras]
 
 
 def sync_state(omo_dir: Path, test_output: str | None = None, now: str | None = None) -> dict:
@@ -374,9 +364,10 @@ def sync_state(omo_dir: Path, test_output: str | None = None, now: str | None = 
     goal_next_milestone = goals.get("next_milestone")
 
     active_count = _count_task_group(tasks_dir, "active")
+    planned_count = _count_task_group(tasks_dir, "planned")
     blocked_count = _count_task_group(tasks_dir, "blocked")
     done_count = _count_task_group(tasks_dir, "done")
-    total = active_count + blocked_count + done_count
+    total = active_count + planned_count + blocked_count + done_count
 
     task_ids = set()
     active_phase = _current_phase(goals)
@@ -439,6 +430,7 @@ def sync_state(omo_dir: Path, test_output: str | None = None, now: str | None = 
             state[f"phase{goal_phase}_status"] = goal_status
 
     state["active_tasks"] = active_count
+    state["planned_tasks"] = planned_count
     state["blocked_tasks"] = blocked_count
     state["completed_tasks"] = done_count
     state["total_tasks"] = total
@@ -486,7 +478,9 @@ def sync_state(omo_dir: Path, test_output: str | None = None, now: str | None = 
     state["task_gate_summary"] = task_gate_summary
     state["promotion_blockers"] = promotion_blockers
     state["divergence_triage_summary"] = divergence_triage_summary
-    state["next_active_tasks"] = _next_active_tasks(tasks_dir / "active", state.get("next_active_tasks"), _omo_ref(omo_dir))
+    omo_ref = _omo_ref(omo_dir)
+    state["next_active_tasks"] = _queue_preview(tasks_dir / "active", state.get("next_active_tasks"), omo_ref, "active")
+    state["next_planned_tasks"] = _queue_preview(tasks_dir / "planned", state.get("next_planned_tasks"), omo_ref, "planned")
     state["updated_at"] = current_time.replace(microsecond=0).isoformat().replace("+00:00", "Z")
     state.pop("active_extras", None)
 
