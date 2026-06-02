@@ -14,6 +14,10 @@ def _parse_iso8601(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _is_promotion_envelope(path: Path) -> bool:
+    return "-promotion-" in path.name and "-promotion-approval-" not in path.name
+
+
 def _history_entry(omo_ref: Path, envelope_path: Path) -> dict[str, object]:
     envelope = _load_yaml(envelope_path)
     required_fields = [
@@ -47,7 +51,7 @@ def _history_entry(omo_ref: Path, envelope_path: Path) -> dict[str, object]:
 def build_promotion_history(root: Path, omo_dir: str | Path = ".omo", now: str = "2026-06-03T00:00:00Z") -> dict[str, object]:
     omo_ref = Path(omo_dir)
     runs_dir = root / omo_ref / "workers" / "runs"
-    entries = [_history_entry(omo_ref, path) for path in sorted(runs_dir.glob("*-promotion-*.yaml"))]
+    entries = [_history_entry(omo_ref, path) for path in sorted(runs_dir.glob("*-promotion-*.yaml")) if _is_promotion_envelope(path)]
     entries.sort(key=lambda item: _parse_iso8601(item["promoted_at"]), reverse=True)
 
     latest = entries[0] if entries else None
