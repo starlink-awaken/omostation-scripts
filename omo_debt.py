@@ -22,6 +22,7 @@ try:
     from scripts.omo_debt_execution import build_execution_record, execution_record_path, run_slug_from_ref
     from scripts.omo_debt_metrics import compute_debt_metrics
     from scripts.omo_debt_owner_routing import build_owner_routing_packet
+    from scripts.omo_debt_reporting import build_reporting_packet, render_reporting_markdown
     from scripts.omo_debt_registry import DebtItem, load_debt_ledger
     from scripts.omo_debt_review_queue import build_review_queue
 except ModuleNotFoundError:
@@ -39,6 +40,7 @@ except ModuleNotFoundError:
     from omo_debt_execution import build_execution_record, execution_record_path, run_slug_from_ref
     from omo_debt_metrics import compute_debt_metrics
     from omo_debt_owner_routing import build_owner_routing_packet
+    from omo_debt_reporting import build_reporting_packet, render_reporting_markdown
     from omo_debt_registry import DebtItem, load_debt_ledger
     from omo_debt_review_queue import build_review_queue
 
@@ -348,6 +350,19 @@ def write_campaign_packet(omo_dir: Path, campaign_packet: dict[str, object]) -> 
     current_md_path.write_text(markdown, encoding="utf-8")
 
 
+def write_reporting_packet(omo_dir: Path, reporting_packet: dict[str, object]) -> None:
+    markdown = render_reporting_markdown(reporting_packet)
+    run_dir = omo_dir / "debt" / "reporting" / "runs" / reporting_packet["run_stamp"]
+    _write_yaml(run_dir / "current.yaml", reporting_packet)
+    run_md_path = run_dir / "current.md"
+    run_md_path.parent.mkdir(parents=True, exist_ok=True)
+    run_md_path.write_text(markdown, encoding="utf-8")
+    _write_yaml(omo_dir / "debt" / "reporting" / "current.yaml", reporting_packet)
+    current_md_path = omo_dir / "debt" / "reporting" / "current.md"
+    current_md_path.parent.mkdir(parents=True, exist_ok=True)
+    current_md_path.write_text(markdown, encoding="utf-8")
+
+
 def write_review_pack(
     omo_dir: Path,
     items: tuple[DebtItem, ...],
@@ -422,7 +437,7 @@ def load_dispatch_run(omo_dir: Path, dispatch_run_ref: str) -> tuple[Path, dict]
     return run_path, run_packet
 
 
-def campaign_outputs(omo_dir: Path, run_ref: str | None) -> None:
+def build_selected_campaign_packet(omo_dir: Path, run_ref: str | None) -> dict[str, object]:
     if run_ref:
         _, run_packet = load_dispatch_run(omo_dir, run_ref)
         dispatch_run_ref = run_ref
@@ -448,7 +463,17 @@ def campaign_outputs(omo_dir: Path, run_ref: str | None) -> None:
         approval_lookup=approval_lookup,
         execution_lookup=execution_lookup,
     )
+    return campaign_packet
+
+
+def campaign_outputs(omo_dir: Path, run_ref: str | None) -> None:
+    campaign_packet = build_selected_campaign_packet(omo_dir, run_ref)
     write_campaign_packet(omo_dir, campaign_packet)
+
+
+def reporting_outputs(omo_dir: Path, run_ref: str | None) -> None:
+    campaign_packet = build_selected_campaign_packet(omo_dir, run_ref)
+    write_reporting_packet(omo_dir, build_reporting_packet(campaign_packet))
 
 
 def require_dispatch_bound_revalidate(
@@ -569,6 +594,10 @@ def main() -> int:
     campaign_parser.add_argument("--omo-dir", default=".omo")
     campaign_parser.add_argument("--run-ref")
 
+    report_parser = subparsers.add_parser("report")
+    report_parser.add_argument("--omo-dir", default=".omo")
+    report_parser.add_argument("--run-ref")
+
     reclassify_parser = subparsers.add_parser("reclassify")
     reclassify_parser.add_argument("--omo-dir", default=".omo")
     reclassify_parser.add_argument("--id", required=True)
@@ -629,6 +658,11 @@ def main() -> int:
     if args.command == "campaign":
         campaign_outputs(omo_dir, args.run_ref)
         print("generated debt campaign packet")
+        return 0
+
+    if args.command == "report":
+        reporting_outputs(omo_dir, args.run_ref)
+        print("generated debt reporting packet")
         return 0
 
     if args.command == "reclassify":
