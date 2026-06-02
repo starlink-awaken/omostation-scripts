@@ -22,6 +22,10 @@ try:
         build_promotion_approval_request,
         promotion_approval_ref,
     )
+    from scripts.omo_promotion_approval_status import (
+        build_promotion_approval_status_packet,
+        render_promotion_approval_status_markdown,
+    )
     from scripts.omo_promotion_readiness import (
         build_promotion_readiness_packet,
         render_promotion_readiness_markdown,
@@ -42,6 +46,10 @@ except ModuleNotFoundError:
         build_promotion_approval_proposal,
         build_promotion_approval_request,
         promotion_approval_ref,
+    )
+    from omo_promotion_approval_status import (
+        build_promotion_approval_status_packet,
+        render_promotion_approval_status_markdown,
     )
     from omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
     from omo_rules import evaluate_rule_bundle
@@ -917,6 +925,67 @@ def _write_task_promotion_readiness(root: Path, omo_dir: str | Path = ".omo", no
     return 0
 
 
+def _proposal_status(root: Path, proposal_ref: str) -> str:
+    proposal_path = root / proposal_ref
+    if not proposal_path.exists():
+        return "missing"
+    proposal = _load_yaml(proposal_path)
+    return str(proposal.get("status", "missing"))
+
+
+def _promotion_approval_status_entry(root: Path, task_path: Path, omo_dir: str | Path = ".omo") -> dict[str, object]:
+    task = _load_yaml(task_path)
+    approval_ref = str(task.get("approval_ref") or "")
+    if not _task_has_task_specific_promotion_approval(approval_ref):
+        raise ValueError("task does not point to a task-specific promotion approval")
+
+    approval = _load_yaml(root / approval_ref)
+    approval_id = str(approval.get("approval_id") or Path(approval_ref).stem)
+    proposal_id = f"{approval_id}-proposal"
+    proposal_ref = str(Path(omo_dir) / "_truth" / "task-center" / "proposals" / f"{proposal_id}.yaml")
+    eval_result = _promotion_eval(root, task["id"], omo_dir=omo_dir)
+    return {
+        "task_id": task["id"],
+        "task_ref": str(task_path.relative_to(root)),
+        "approval_ref": approval_ref,
+        "approval_id": approval_id,
+        "approval_status": str(approval.get("approval_status", "missing")),
+        "proposal_id": proposal_id,
+        "proposal_ref": proposal_ref,
+        "proposal_status": _proposal_status(root, proposal_ref),
+        "human_approval_required": bool(task.get("human_approval_required")),
+        "eligible": eval_result["eligible"],
+        "blockers": eval_result["blockers"],
+    }
+
+
+def _write_task_promotion_approval_status(
+    root: Path,
+    omo_dir: str | Path = ".omo",
+    now: str | None = None,
+    task_id: str | None = None,
+) -> int:
+    omo = _omo_path(root, omo_dir)
+    planned_dir = omo / "tasks" / "planned"
+    task_paths = (
+        [_find_planned_task_file(planned_dir, task_id)]
+        if task_id
+        else [
+            path
+            for path in sorted(planned_dir.glob("*.yaml"))
+            if _task_has_task_specific_promotion_approval(_load_yaml(path).get("approval_ref"))
+        ]
+    )
+    entries = [_promotion_approval_status_entry(root, path, omo_dir=omo_dir) for path in task_paths]
+    packet = build_promotion_approval_status_packet(generated_at=now or _utc_now(), tasks=entries)
+    approvals_dir = omo / "workers" / "promotion" / "approvals"
+    approvals_dir.mkdir(parents=True, exist_ok=True)
+    _write_yaml(approvals_dir / "current.yaml", packet)
+    write_text_atomic(approvals_dir / "current.md", render_promotion_approval_status_markdown(packet))
+    print(f"approval_task_count={packet['approval_task_count']} granted_count={packet['granted_count']}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="omo")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -996,6 +1065,10 @@ def main() -> int:
     promotion_request_parser.add_argument("--requested-by", required=True)
     promotion_request_parser.add_argument("--now", required=True)
     promotion_request_parser.add_argument("--omo-dir", default=".omo")
+    promotion_approval_status_parser = task_sub.add_parser("promotion-approval-status")
+    promotion_approval_status_parser.add_argument("--omo-dir", default=".omo")
+    promotion_approval_status_parser.add_argument("--task-id")
+    promotion_approval_status_parser.add_argument("--now")
 
     args = parser.parse_args()
 
@@ -1109,6 +1182,14 @@ def main() -> int:
             requested_by=args.requested_by,
             now=args.now,
             omo_dir=args.omo_dir,
+        )
+
+    if args.command == "task" and args.task_command == "promotion-approval-status":
+        return _write_task_promotion_approval_status(
+            Path.cwd(),
+            omo_dir=args.omo_dir,
+            now=args.now,
+            task_id=args.task_id,
         )
 
     return 1
