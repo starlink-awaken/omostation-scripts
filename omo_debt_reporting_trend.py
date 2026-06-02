@@ -70,22 +70,34 @@ def _owner_interval(previous: dict[str, object], current: dict[str, object]) -> 
     }
 
 
-def _owner_trends(
+def _owners_by_run(
     ordered_runs: list[dict[str, object]],
     reporting_packets_by_run: dict[str, dict[str, object]] | None,
-) -> dict[str, object] | None:
+) -> list[dict[str, dict[str, object]]] | None:
     if len(ordered_runs) < 2 or reporting_packets_by_run is None:
         return None
 
     owners_by_run = []
-    union_names: set[str] = set()
     for run in ordered_runs:
         run_stamp = str(run["run_stamp"])
         reporting_packet = reporting_packets_by_run.get(run_stamp)
         if reporting_packet is None:
             raise ValueError(f"missing owner reporting packet for run: {run_stamp}")
-        owner_map = {str(entry["owner"]): entry for entry in reporting_packet.get("owners", [])}
-        owners_by_run.append(owner_map)
+        owners_by_run.append(
+            {str(entry["owner"]): entry for entry in reporting_packet.get("owners", [])}
+        )
+    return owners_by_run
+
+
+def _owner_trends(
+    ordered_runs: list[dict[str, object]],
+    owners_by_run: list[dict[str, dict[str, object]]] | None,
+) -> dict[str, object] | None:
+    if owners_by_run is None:
+        return None
+
+    union_names: set[str] = set()
+    for owner_map in owners_by_run:
         union_names |= set(owner_map.keys())
 
     shared_names = sorted(set.intersection(*(set(owner_map.keys()) for owner_map in owners_by_run)))
@@ -111,6 +123,50 @@ def _owner_trends(
         "shared_owner_count": len(shared_names),
         "owners_excluded_count": len(union_names - set(shared_names)),
         "compared": compared,
+    }
+
+
+def _owner_presence(
+    ordered_runs: list[dict[str, object]],
+    owners_by_run: list[dict[str, dict[str, object]]] | None,
+    shared_names: set[str] | None,
+) -> dict[str, object] | None:
+    if owners_by_run is None or shared_names is None:
+        return None
+
+    union_names = set().union(*(owner_map.keys() for owner_map in owners_by_run))
+    excluded_names = sorted(union_names - shared_names)
+    if not excluded_names:
+        return {
+            "presence_status": "no_excluded_owners",
+            "window_run_count": len(ordered_runs),
+            "entries": [],
+        }
+
+    entries = []
+    oldest_run_stamp = str(ordered_runs[0]["run_stamp"])
+    latest_run_stamp = str(ordered_runs[-1]["run_stamp"])
+    for owner_name in excluded_names:
+        present_stamps = [
+            str(run["run_stamp"])
+            for run, owner_map in zip(ordered_runs, owners_by_run, strict=True)
+            if owner_name in owner_map
+        ]
+        entries.append(
+            {
+                "owner": owner_name,
+                "run_count": len(present_stamps),
+                "first_window_run": present_stamps[0],
+                "last_window_run": present_stamps[-1],
+                "in_first_window_run": present_stamps[0] == oldest_run_stamp,
+                "in_last_window_run": present_stamps[-1] == latest_run_stamp,
+            }
+        )
+
+    return {
+        "presence_status": "presence_available",
+        "window_run_count": len(ordered_runs),
+        "entries": entries,
     }
 
 
@@ -172,7 +228,17 @@ def build_reporting_trend_packet(
     ]
     oldest_run_stamp = ordered_runs[0]["run_stamp"] if ordered_runs else None
     latest_run_stamp = ordered_runs[-1]["run_stamp"] if ordered_runs else None
-    owners = _owner_trends(ordered_runs, reporting_packets_by_run)
+    owners_by_run = _owners_by_run(ordered_runs, reporting_packets_by_run)
+    owners = _owner_trends(ordered_runs, owners_by_run)
+    owner_presence = _owner_presence(
+        ordered_runs,
+        owners_by_run,
+        (
+            {str(entry["owner"]) for entry in owners["compared"]}
+            if owners is not None
+            else None
+        ),
+    )
     return {
         "generated_at": generated_at,
         "trend_status": "trend_available" if len(ordered_runs) >= 2 else "insufficient_history",
@@ -185,6 +251,7 @@ def build_reporting_trend_packet(
         "runs": ordered_runs,
         "intervals": intervals,
         "owners": owners,
+        "owner_presence": owner_presence,
     }
 
 
@@ -262,4 +329,28 @@ def render_reporting_trend_markdown(packet: dict[str, object]) -> str:
                         "",
                     ]
                 )
+    owner_presence = packet.get("owner_presence")
+    if owner_presence is not None:
+        lines.extend(
+            [
+                "## Owner Presence",
+                "",
+                f"presence_status={owner_presence['presence_status']}",
+                f"window_run_count={owner_presence['window_run_count']}",
+                "",
+            ]
+        )
+        for entry in owner_presence["entries"]:
+            lines.extend(
+                [
+                    f"### Presence Owner: {entry['owner']}",
+                    "",
+                    f"run_count={entry['run_count']}",
+                    f"first_window_run={entry['first_window_run']}",
+                    f"last_window_run={entry['last_window_run']}",
+                    f"in_first_window_run={entry['in_first_window_run']}",
+                    f"in_last_window_run={entry['in_last_window_run']}",
+                    "",
+                ]
+            )
     return "\n".join(lines)
