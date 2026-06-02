@@ -788,8 +788,8 @@ def _apply_task_promotion(root: Path, task_id: str, promoted_by: str, now: str, 
     return 0
 
 
-def _write_task_promotion_history(root: Path, omo_dir: str | Path = ".omo") -> int:
-    result = build_promotion_history(root, omo_dir=omo_dir, now=_utc_now())
+def _write_task_promotion_history(root: Path, omo_dir: str | Path = ".omo", now: str | None = None) -> int:
+    result = build_promotion_history(root, omo_dir=omo_dir, now=now or _utc_now())
     omo = _omo_path(root, omo_dir)
     current_yaml = omo / "workers" / "promotion" / "current.yaml"
     current_md = omo / "workers" / "promotion" / "current.md"
@@ -872,6 +872,7 @@ def main() -> int:
     promote_apply_parser.add_argument("--omo-dir", default=".omo")
     promotion_history_parser = task_sub.add_parser("promotion-history")
     promotion_history_parser.add_argument("--omo-dir", default=".omo")
+    promotion_history_parser.add_argument("--now")
 
     args = parser.parse_args()
 
@@ -973,7 +974,7 @@ def main() -> int:
         )
 
     if args.command == "task" and args.task_command == "promotion-history":
-        return _write_task_promotion_history(Path.cwd(), omo_dir=args.omo_dir)
+        return _write_task_promotion_history(Path.cwd(), omo_dir=args.omo_dir, now=args.now)
 
     return 1
 
