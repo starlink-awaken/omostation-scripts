@@ -12,6 +12,11 @@ import yaml
 try:
     from scripts.omo_admission import evaluate_worker_envelope, request_conditional_approval
     from scripts.omo_governance import propose_truth_mutation
+    from scripts.omo_contract_request import (
+        build_contract_proposal,
+        build_contract_request,
+        contract_request_ref,
+    )
     from scripts.omo_io import write_text_atomic, write_yaml_atomic
     from scripts.omo_handoff_index import write_handoff_index
     from scripts.omo_metrics import write_worker_utilization_summary
@@ -41,6 +46,11 @@ try:
 except ModuleNotFoundError:
     from omo_admission import evaluate_worker_envelope, request_conditional_approval
     from omo_governance import propose_truth_mutation
+    from omo_contract_request import (
+        build_contract_proposal,
+        build_contract_request,
+        contract_request_ref,
+    )
     from omo_io import write_text_atomic, write_yaml_atomic
     from omo_handoff_index import write_handoff_index
     from omo_metrics import write_worker_utilization_summary
@@ -918,6 +928,74 @@ def _request_task_promotion_approval(
     return 0
 
 
+def _request_task_contract_declaration(
+    root: Path,
+    task_id: str,
+    deliverables: list[str],
+    actor: str,
+    now: str,
+    omo_dir: str | Path = ".omo",
+) -> int:
+    request_ref, proposal_ref = _request_task_contract_declaration_record(
+        root,
+        task_id,
+        deliverables=deliverables,
+        actor=actor,
+        now=now,
+        omo_dir=omo_dir,
+    )
+    print(f"request_ref={request_ref} proposal_ref={proposal_ref}")
+    return 0
+
+
+def _request_task_contract_declaration_record(
+    root: Path,
+    task_id: str,
+    *,
+    deliverables: list[str],
+    actor: str,
+    now: str,
+    omo_dir: str | Path = ".omo",
+) -> tuple[str, str]:
+    if not deliverables:
+        raise ValueError("deliverables must not be empty")
+
+    omo = _omo_path(root, omo_dir)
+    task_path = _find_task_file(omo / "tasks" / "active", task_id)
+    task = _load_yaml(task_path)
+    status = build_governance_overlay_status(root, omo_dir=omo_dir, now=now)["yaml"]
+    target_state = next(
+        (target for target in status.get("active_target_states", []) if target.get("task_id") == task_id),
+        None,
+    )
+    if target_state is None or target_state.get("state") != "active_dispatch_blocked":
+        raise ValueError("task is not currently blocked on contract gap")
+
+    request_ref = contract_request_ref(task_id, now)
+    request_record = build_contract_request(
+        task_id=task_id,
+        task_ref=str(task_path.relative_to(root)),
+        deliverables=deliverables,
+        requested_at=now,
+        requested_by=actor,
+        request_ref=request_ref,
+    )
+    proposal = build_contract_proposal(
+        task_id=task_id,
+        task_ref=str(task_path.relative_to(root)),
+        deliverables=deliverables,
+        requested_by=actor,
+        request_ref=request_ref,
+    )
+    proposal_record = propose_truth_mutation(root, proposal, now=now)
+
+    _write_yaml(root / request_ref, request_record)
+    task["handoff_refs"] = _append_unique(task.get("handoff_refs", []), [request_ref])
+    _write_yaml(task_path, task)
+    proposal_ref = Path(omo_dir) / "_truth" / "task-center" / "proposals" / f"{proposal_record['id']}.yaml"
+    return request_ref, str(proposal_ref)
+
+
 def _request_task_promotion_approval_record(
     root: Path,
     task_id: str,
@@ -1356,6 +1434,12 @@ def main() -> int:
     promotion_request_parser.add_argument("--requested-by", required=True)
     promotion_request_parser.add_argument("--now", required=True)
     promotion_request_parser.add_argument("--omo-dir", default=".omo")
+    contract_request_parser = task_sub.add_parser("contract-declare-deliverables")
+    contract_request_parser.add_argument("task_id")
+    contract_request_parser.add_argument("--deliverables", nargs="+", required=True)
+    contract_request_parser.add_argument("--actor", required=True)
+    contract_request_parser.add_argument("--now", required=True)
+    contract_request_parser.add_argument("--omo-dir", default=".omo")
     promotion_approval_status_parser = task_sub.add_parser("promotion-approval-status")
     promotion_approval_status_parser.add_argument("--omo-dir", default=".omo")
     promotion_approval_status_parser.add_argument("--task-id")
@@ -1484,6 +1568,16 @@ def main() -> int:
             Path.cwd(),
             args.task_id,
             requested_by=args.requested_by,
+            now=args.now,
+            omo_dir=args.omo_dir,
+        )
+
+    if args.command == "task" and args.task_command == "contract-declare-deliverables":
+        return _request_task_contract_declaration(
+            Path.cwd(),
+            args.task_id,
+            deliverables=list(args.deliverables),
+            actor=args.actor,
             now=args.now,
             omo_dir=args.omo_dir,
         )
