@@ -177,7 +177,8 @@ def _launch_worker_from_prompt(
 def _launch_existing_dispatch(root: Path, dispatch_path: Path, *, omo_dir: str | Path = ".omo") -> dict[str, object]:
     dispatch = _load_yaml(dispatch_path)
     registry = _load_yaml(_omo_path(root, omo_dir) / "workers" / "registry.yaml")
-    prompt_path = root / dispatch["execution"]["prompt_file"]
+    prompt_ref = dispatch.get("inputs", {}).get("prompt_file") or dispatch["execution"]["prompt_file"]
+    prompt_path = root / str(prompt_ref)
     stdout_path = root / dispatch["execution"]["log_ref"]
     _launch_worker_from_prompt(root, registry, str(dispatch["worker_id"]), str(dispatch["transport_mode"]), prompt_path, stdout_path)
     dispatch["dispatch_state"] = "active"
