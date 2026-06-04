@@ -7,7 +7,8 @@
 set -e  # 遇到错误立即退出
 
 # 配置
-WORKSPACE="/Users/xiamingxing/Workspace"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE="${OMOSTATION_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 BACKUP_BASE_DIR="${WORKSPACE}/backups"
 
 # 检查参数

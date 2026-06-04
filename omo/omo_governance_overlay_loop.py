@@ -6,10 +6,10 @@ import yaml
 
 try:
     from scripts.omo_governance_overlay import build_governance_overlay_status
-    from scripts.omo_promotion_approval import evaluate_promotion_approval
+    from scripts.omo_governance_overlay_targets import evaluate_governance_overlay_planned_target
 except ModuleNotFoundError:
     from omo_governance_overlay import build_governance_overlay_status
-    from omo_promotion_approval import evaluate_promotion_approval
+    from omo_governance_overlay_targets import evaluate_governance_overlay_planned_target
 
 
 def _load_yaml_required(path: Path) -> dict:
@@ -25,10 +25,6 @@ def _roadmap_item(roadmap: dict, roadmap_item_id: str) -> dict:
     raise KeyError(f"unknown roadmap item: {roadmap_item_id}")
 
 
-def _task_has_task_specific_promotion_approval(approval_ref: str | None) -> bool:
-    return bool(approval_ref and approval_ref.endswith(".yaml") and "-promotion-approval-" in approval_ref)
-
-
 def _roadmap_item_sort_key(item: dict[str, object]) -> tuple[int, str]:
     return (0 if item["priority"] == "P0" else 1, str(item["id"]))
 
@@ -42,56 +38,7 @@ def _target_state_summary(target_states: list[dict[str, object]]) -> dict[str, i
 
 
 def _target_action(root: Path, target_ref: str) -> dict[str, object]:
-    if not target_ref.startswith(".omo/tasks/planned/"):
-        return {
-            "target_ref": target_ref,
-            "task_id": None,
-            "action": "mark_blocked",
-            "result": "unsupported_target_ref",
-            "detail": "only .omo/tasks/planned/*.yaml target refs are supported in v1",
-        }
-
-    task = _load_yaml_required(root / target_ref)
-    task_id = str(task["id"])
-    if task.get("human_approval_required"):
-        approval_ref = task.get("approval_ref")
-        approval_eval = evaluate_promotion_approval(
-            root,
-            approval_ref=approval_ref,
-            task_id=task_id,
-            task_ref=target_ref,
-        )
-        if approval_eval["approval_ready"]:
-            return {
-                "target_ref": target_ref,
-                "task_id": task_id,
-                "action": "promote_apply",
-                "result": "promotion_ready",
-                "detail": "task-specific promotion approval is already granted",
-            }
-        if _task_has_task_specific_promotion_approval(str(approval_ref) if approval_ref else None):
-            return {
-                "target_ref": target_ref,
-                "task_id": task_id,
-                "action": "await_approval",
-                "result": "approval_pending",
-                "detail": "task-specific promotion approval exists but is not granted yet",
-            }
-        return {
-            "target_ref": target_ref,
-            "task_id": task_id,
-            "action": "request_approval",
-            "result": "approval_request_needed",
-            "detail": "task requires task-specific promotion approval before promote-apply",
-        }
-
-    return {
-        "target_ref": target_ref,
-        "task_id": task_id,
-        "action": "promote_apply",
-        "result": "promotion_ready",
-        "detail": "task is eligible for promote-apply without human approval",
-    }
+    return evaluate_governance_overlay_planned_target(root, target_ref)
 
 
 def plan_governance_overlay_cycle(root: Path, *, omo_dir: str | Path = ".omo", actor: str, now: str) -> dict[str, object]:

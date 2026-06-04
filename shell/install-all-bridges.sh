@@ -9,6 +9,20 @@ set -euo pipefail
 
 WORKSPACE="${HOME}/Workspace"
 HERMES_SCRIPTS="${HOME}/.hermes/scripts"
+RUN_LEGACY_INSTALLERS=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --legacy-installers)
+      RUN_LEGACY_INSTALLERS=1
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
 
 mkdir -p "$HERMES_SCRIPTS"
 COUNT=0
@@ -52,15 +66,21 @@ SHWRAP
 echo "━━━ Phase 1: 项目桥接 ━━━"
 echo ""
 
-for installer in "$WORKSPACE"/*/scripts/install-hermes-bridge.sh; do
-  if [ -f "$installer" ] && [ -x "$installer" ]; then
-    project=$(echo "$installer" | sed "s|$WORKSPACE/||" | cut -d/ -f1)
-    echo "  [${project}]"
-    "$installer" 2>&1 | sed 's/^/    /' || true
-    COUNT=$((COUNT + 1))
-    echo ""
-  fi
-done
+if [ "$RUN_LEGACY_INSTALLERS" -eq 1 ]; then
+  echo "  legacy installer mode enabled"
+  for installer in "$WORKSPACE"/*/scripts/install-hermes-bridge.sh; do
+    if [ -f "$installer" ] && [ -x "$installer" ]; then
+      project=$(echo "$installer" | sed "s|$WORKSPACE/||" | cut -d/ -f1)
+      echo "  [${project}]"
+      "$installer" 2>&1 | sed 's/^/    /' || true
+      COUNT=$((COUNT + 1))
+      echo ""
+    fi
+  done
+else
+  echo "  wrapper-only mode: skipping legacy install-hermes-bridge.sh scanners"
+  echo ""
+fi
 
 # ── 阶段2: 将软链替换为 wrapper ─────────────────
 echo "━━━ Phase 2: 软链 → Wrapper 转换 ━━━"

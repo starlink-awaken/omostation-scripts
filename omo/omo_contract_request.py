@@ -53,7 +53,7 @@ def build_contract_proposal(
         "change_summary": f"Declare contract deliverables for {task_id}",
         "impact": "Provides explicit write scope so governance overlay can safely advance from contract gap to launch.",
         "verification_plan": [
-            f"python3 scripts/omo_worker.py task governance-overlay-status --omo-dir .omo",
+            "python3 scripts/omo_worker.py task governance-overlay-status --omo-dir .omo",
         ],
         "rollback_plan": [
             f"Restore {task_ref} deliverables to the previous list if the declared scope is incorrect.",

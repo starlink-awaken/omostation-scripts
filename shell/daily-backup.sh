@@ -7,7 +7,8 @@
 set -e  # 遇到错误立即退出
 
 # 配置
-WORKSPACE="/Users/xiamingxing/Workspace"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE="${OMOSTATION_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 BACKUP_BASE_DIR="${WORKSPACE}/backups"
 BACKUP_DIR="${BACKUP_BASE_DIR}/daily/$(date +%Y%m%d)"
 RETENTION_DAYS=30  # 保留30天的备份
