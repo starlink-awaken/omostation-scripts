@@ -8,20 +8,10 @@ from pathlib import Path
 
 import yaml
 
-try:
-    from scripts.omo_debt_weight import compute_debt_weight, debt_summary
-except ModuleNotFoundError:
-    from omo_debt_weight import compute_debt_weight, debt_summary
-try:
-    from scripts.omo_debt_metrics import compute_debt_metrics
-    from scripts.omo_debt_registry import load_debt_ledger
-except ModuleNotFoundError:
-    from omo_debt_metrics import compute_debt_metrics
-    from omo_debt_registry import load_debt_ledger
-try:
-    from scripts.omo_io import write_yaml_atomic
-except ModuleNotFoundError:
-    from omo_io import write_yaml_atomic
+from omo.omo_debt_weight import compute_debt_weight, debt_summary
+from omo.omo_debt_metrics import compute_debt_metrics
+from omo.omo_debt_registry import load_debt_ledger
+from omo.omo_io import write_yaml_atomic
 
 
 def _load_yaml(path: Path) -> dict:
@@ -451,6 +441,8 @@ def sync_state(omo_dir: Path, test_output: str | None = None, now: str | None = 
         resolved = set(metrics.closed_item_ids)
     else:
         resolved = set(state.get("resolved_debt_items", []))
+        from omo.omo_debt_weight import DEBT_ITEMS
+        debt_items = DEBT_ITEMS
     dw = compute_debt_weight(resolved, debt_items=debt_items)
     state["health_score_raw"] = raw_health
     state["debt_weight"] = dw
