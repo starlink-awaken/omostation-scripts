@@ -15,6 +15,19 @@ import sys
 from pathlib import Path
 
 WORKSPACE = Path(__file__).resolve().parents[1]  # ~/Workspace/
+PORT_REGISTRY = WORKSPACE / "protocols" / "port-registry.yaml"
+
+# ── 从 registry 加载已注册端口 ────────────────────────────
+
+def load_port_registry() -> dict[int, str]:
+    """加载 port-registry.yaml 中的端口分配。"""
+    try:
+        import yaml
+        data = yaml.safe_load(PORT_REGISTRY.read_text(encoding="utf-8"))
+        return data.get("ports", {}) if data else {}
+    except Exception:
+        return {}
+
 
 # ── 来自代码的全量 CLI 入口 ────────────────────────────
 
@@ -39,16 +52,22 @@ def collect_cli_from_code() -> dict[str, str]:
     return entries
 
 
-# ── 全量已知端口 ────────────────────────────────────────
+# ── 全量已知端口 (优先从 registry 加载) ─────────────────
 
-KNOWN_PORTS: dict[int, str] = {
-    7422: "agora (MCP HTTP)",
-    7430: "agora (Web Dashboard)",
-    7431: "agora (MCP SSE)",
-    8090: "cockpit (Web Dashboard)",
-    9090: "ecos (Dashboard)",
-    8765: "minerva (Web, kairon)",
-}
+def get_known_ports() -> dict[int, str]:
+    """加载已知端口 (优先从 port-registry.yaml, 回退到硬编码)。"""
+    registry = load_port_registry()
+    if registry:
+        return registry
+    # 回退硬编码 (registry 尚未创建时)
+    return {
+        7422: "agora (MCP HTTP)",
+        7430: "agora (Web Dashboard)",
+        7431: "agora (MCP SSE)",
+        8090: "cockpit (Web Dashboard)",
+        9090: "ecos (Dashboard)",
+        8765: "minerva (Web, kairon)",
+    }
 
 # 不作为"端口冲突"的连接引用模式 (其他项目连接 agora 的正常行为)
 PORT_REFERENCE_PATTERNS = [
@@ -65,13 +84,15 @@ def check_port_conflicts() -> int:
     violations = 0
     ports_found: dict[int, list[str]] = {}
 
+    known_ports = get_known_ports()
+
     for py_file in WORKSPACE.rglob("*.py"):
         if any(x in str(py_file) for x in [".venv", "__pycache__", "_archived", "build/"]):
             continue
         try:
             for line in py_file.read_text(encoding="utf-8").split("\n"):
                 if "port" in line.lower() and any(c.isdigit() for c in line):
-                    for known_port in KNOWN_PORTS:
+                    for known_port in known_ports:
                         if str(known_port) in line and "=" in line:
                             ports_found.setdefault(known_port, []).append(str(py_file))
         except Exception:
@@ -100,7 +121,7 @@ def check_port_conflicts() -> int:
                 except Exception:
                     pass
             if real_conflict:
-                print(f"⚠ 端口冲突: :{port} — {', '.join(sorted(projects))} (期望: {KNOWN_PORTS[port]})")
+                print(f"⚠ 端口冲突: :{port} — {', '.join(sorted(projects))} (期望: {known_ports[port]})")
                 violations += 1
 
     return violations
