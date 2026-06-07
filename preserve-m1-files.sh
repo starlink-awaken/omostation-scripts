@@ -8,7 +8,7 @@ set -euo pipefail
 WORKFLOW_DIR="$HOME/Workspace/projects/ecos/src/ecos/ssot/mof/m1/workflow"
 BOSROUTE_DIR="$HOME/Workspace/projects/ecos/src/ecos/ssot/mof/m1/bosroute"
 MIN_FILES=20
-RESTORE_COMMIT="264f39a2"
+RESTORE_COMMIT="13a8ee0"
 
 count=$(ls "$WORKFLOW_DIR"/WORKFLOW-*.yaml 2>/dev/null | wc -l | tr -d ' ')
 if [ "$count" -lt "$MIN_FILES" ]; then
