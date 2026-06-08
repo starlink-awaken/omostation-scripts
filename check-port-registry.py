@@ -34,18 +34,32 @@ def load_env_only_ports() -> set[int]:
 
 
 def scan_code_ports() -> set[int]:
-    """扫描项目代码中所有硬编码的端口定义 (非注释/非引用)。"""
+    """扫描项目代码中所有硬编码的端口定义 (非注释/非引用)。
+
+    严格模式: 必须同时满足
+      1. 行含 'port' 关键词
+      2. 含赋值号 ' = ' (前后有空格,排除时间戳如 1780567456)
+      3. 数字在 [1024, 65535] 端口范围
+    排除 .jsonl/.log 等日志文件(时间戳易被误识别为端口)。
+    """
     code_ports: set[int] = set()
     for py_file in WORKSPACE.glob("projects/*/src/**/*.py"):
         if any(x in str(py_file) for x in [".venv", "__pycache__", "_archived", "build/"]):
             continue
         try:
             for line in py_file.read_text(encoding="utf-8").split("\n"):
-                # 只匹配端口赋值: port = 1234 或 port=1234
-                if "port" in line.lower() and "=" in line:
-                    for word in line.split():
-                        if word.isdigit() and 1024 <= int(word) <= 65535:
-                            code_ports.add(int(word))
+                # 排除注释/字符串
+                stripped = line.strip()
+                if stripped.startswith("#") or stripped.startswith("//"):
+                    continue
+                # 严格端口赋值模式: 包含 'port' 关键词 + 空格等号空格 ' = ' (避免时间戳)
+                if "port" not in line.lower():
+                    continue
+                if " = " not in line:
+                    continue
+                for word in line.split():
+                    if word.isdigit() and 1024 <= int(word) <= 65535:
+                        code_ports.add(int(word))
         except Exception:
             pass
     return code_ports
