@@ -470,7 +470,9 @@ def sync_state(
         try:
             from omo.omo_xplane import compute_xplane_score
 
-            _xp = compute_xplane_score(quick=True)
+            # 全量探活(quick=False): 跑 command/http/counter 型,拿到真实覆盖率。
+            # quick=True 只探 jsonl(只读、秒级),覆盖率仅 ~10%,会严重低估 X 轴。
+            _xp = compute_xplane_score(quick=False)
             xplane_factor = float(_xp.get("xplane_factor", 1.0))
             state["xplane_score"] = _xp.get("xplane_score", 0.0)
             state["xplane_coverage"] = _xp.get("overall_coverage", 0.0)
