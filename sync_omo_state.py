@@ -3,15 +3,25 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
 
+WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
+OMO_SRC = WORKSPACE_ROOT / "projects" / "omo" / "src"
+if str(OMO_SRC) not in sys.path:
+    sys.path.insert(0, str(OMO_SRC))
+
 from omo.omo_debt_weight import compute_debt_weight, debt_summary
 from omo.omo_debt_metrics import compute_debt_metrics
 from omo.omo_debt_registry import load_debt_ledger
 from omo.omo_io import write_yaml_atomic
+from omo.omo_state_schema import (
+    summarize_system_health_snapshot,
+    validate_system_state,
+)
 
 
 def _load_yaml(path: Path) -> dict:
@@ -340,12 +350,19 @@ def _queue_preview(group_dir: Path, state_lines: list[str] | None, omo_ref: Path
     return [header, *task_ids, *extras]
 
 
-def sync_state(omo_dir: Path, test_output: str | None = None, now: str | None = None) -> dict:
+def sync_state(
+    omo_dir: Path,
+    test_output: str | None = None,
+    now: str | None = None,
+    xplane_factor: float | None = 1.0,  # 1.0 = 无折扣(测试隔离); None 触发实时探活
+) -> dict:
     state_path = omo_dir / "state" / "system.yaml"
+    health_snapshot_path = omo_dir / "state" / "system_health.yaml"
     tasks_dir = omo_dir / "tasks"
     goals_path = omo_dir / "goals" / "current.yaml"
 
     state = _load_yaml(state_path)
+    health_snapshot = _load_yaml(health_snapshot_path)
     goals = _load_yaml(goals_path)
     current_time = _parse_iso8601(now) or datetime.now(timezone.utc)
     goal_phase = goals.get("phase")
@@ -444,9 +461,25 @@ def sync_state(omo_dir: Path, test_output: str | None = None, now: str | None = 
         from omo.omo_debt_weight import DEBT_ITEMS
         debt_items = DEBT_ITEMS
     dw = compute_debt_weight(resolved, debt_items=debt_items)
+    # X-Plane 接入(档位②): X 轴探活折扣。机制探不到活 → 给 health 打折,
+    # 戳破"测试绿=系统健康"假象。故障降级: 任何探活异常 factor=1.0,
+    # 绝不让 X-Plane 拖垮健康同步(健康同步必须 anti-fragile)。
+    # xplane_factor 入参支持依赖注入:测试可显式传 1.0 隔离 X 轴以保持确定性。
+    # 生产 CLI 把 xplane_factor 显式传 None 触发实时探活;默认 1.0 兼容直接 import 调用方。
+    if xplane_factor is None:
+        try:
+            from omo.omo_xplane import compute_xplane_score
+
+            _xp = compute_xplane_score(quick=True)
+            xplane_factor = float(_xp.get("xplane_factor", 1.0))
+            state["xplane_score"] = _xp.get("xplane_score", 0.0)
+            state["xplane_coverage"] = _xp.get("overall_coverage", 0.0)
+        except Exception:  # noqa: BLE001 — X-Plane 故障不得阻断健康同步
+            xplane_factor = 1.0
+    xplane_factor = xplane_factor or 1.0  # NaN/None 终极兜底,保证 health 公式总有合法值
     state["health_score_raw"] = raw_health
     state["debt_weight"] = dw
-    state["health_score"] = round(raw_health * dw, 2)
+    state["health_score"] = round(raw_health * dw * xplane_factor, 2)
     if ledger and metrics:
         state["debt_registry_ref"] = ledger.registry_ref
         state["debt_dashboard_ref"] = ledger.dashboard_ref
@@ -473,9 +506,14 @@ def sync_state(omo_dir: Path, test_output: str | None = None, now: str | None = 
     omo_ref = _omo_ref(omo_dir)
     state["next_active_tasks"] = _queue_preview(tasks_dir / "active", state.get("next_active_tasks"), omo_ref, "active")
     state["next_planned_tasks"] = _queue_preview(tasks_dir / "planned", state.get("next_planned_tasks"), omo_ref, "planned")
+    if health_snapshot:
+        state["runtime_health_summary"] = summarize_system_health_snapshot(health_snapshot)
+    else:
+        state.pop("runtime_health_summary", None)
     state["updated_at"] = current_time.replace(microsecond=0).isoformat().replace("+00:00", "Z")
     state.pop("active_extras", None)
 
+    validate_system_state(state)
     _write_yaml(state_path, state)
     return state
 
@@ -491,7 +529,7 @@ def main() -> int:
     if args.test_output_file:
         test_output = Path(args.test_output_file).read_text(encoding="utf-8")
 
-    sync_state(Path(args.omo_dir), test_output=test_output, now=args.now)
+    sync_state(Path(args.omo_dir), test_output=test_output, now=args.now, xplane_factor=None)
     return 0
 
 
