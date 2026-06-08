@@ -79,13 +79,24 @@ PORT_REFERENCE_PATTERNS = [
 ]
 
 
+def load_port_conflicts_resolved() -> dict[int, list[str]]:
+    """加载注册表已裁决的端口冲突白名单(governance 拍板过的项目组合)。"""
+    try:
+        import yaml
+        reg = WORKSPACE / "protocols" / "port-registry.yaml"
+        data = yaml.safe_load(reg.read_text(encoding="utf-8")) or {}
+        return {int(p): list(projs) for p, projs in (data.get("conflicts_resolved") or {}).items()}
+    except Exception:
+        return {}
+
+
 def check_port_conflicts() -> int:
     """检查端口冲突。返回 violations 数量."""
     violations = 0
     ports_found: dict[int, list[str]] = {}
 
     known_ports = get_known_ports()
-
+    resolved = load_port_conflicts_resolved()  # governance 已裁决白名单
     for py_file in WORKSPACE.rglob("*.py"):
         if any(x in str(py_file) for x in [".venv", "__pycache__", "_archived", "build/"]):
             continue
@@ -108,6 +119,9 @@ def check_port_conflicts() -> int:
             and "legacy-readme" not in f
         }
         projects = {Path(f).parts[Path(f).parts.index("projects") + 1] for f in unique_files if "projects" in f}
+        # governance 已裁决白名单:projects ⊆ resolved[port] 即合规
+        if port in resolved and projects <= set(resolved[port]):
+            continue
         # 排除连接引用 (其他项目引用 agora 端口作为配置)
         if len(projects) > 1:
             real_conflict = False
@@ -136,7 +150,7 @@ def check_doc_freshness() -> int:
         ("Workspace/CLAUDE.md", "根 CLAUDE.md"),
         ("Workspace/LAYER-INDEX.md", "分层索引"),
         ("Workspace/projects/kairon/CLAUDE.md", "kairon CLAUDE.md"),
-        ("Documents/学习进化/CLAUDE.md", "Vault CLAUDE.md"),
+        ("Documents/@学习进化/CLAUDE.md", "Vault CLAUDE.md"),
     ]
 
     now = time.time()
