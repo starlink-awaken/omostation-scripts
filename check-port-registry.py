@@ -16,8 +16,19 @@ def load_registry_ports() -> set[int]:
     try:
         import yaml
         reg = WORKSPACE / "protocols" / "port-registry.yaml"
-        data = yaml.safe_load(reg.read_text(encoding="utf-8"))
-        return set(data.get("ports", {}).keys()) if data else set()
+        data = yaml.safe_load(reg.read_text(encoding="utf-8")) or {}
+        return set(data.get("ports", {}).keys())
+    except Exception:
+        return set()
+
+
+def load_env_only_ports() -> set[int]:
+    """加载注册表 types 字段标记的 env-only 端口(代码用 env 变量注入,不硬编码)。"""
+    try:
+        import yaml
+        reg = WORKSPACE / "protocols" / "port-registry.yaml"
+        data = yaml.safe_load(reg.read_text(encoding="utf-8")) or {}
+        return {int(p) for p, t in (data.get("types") or {}).items() if t == "env-only"}
     except Exception:
         return set()
 
@@ -43,9 +54,11 @@ def scan_code_ports() -> set[int]:
 def main() -> int:
     registry = load_registry_ports()
     code = scan_code_ports()
+    env_only = load_env_only_ports()  # 端口在注册表,代码用 env 变量,不视为僵尸
 
     unregistered = code - registry
-    stale = registry - code
+    # 僵尸条目排除 env-only 端口(显式声明只用 env,不硬编码 = 合规)
+    stale = (registry - code) - env_only
 
     print(f"  Registry ports: {len(registry)}")
     print(f"  Code ports:     {len(code)}")
@@ -55,7 +68,7 @@ def main() -> int:
         print(f"  ❌ 未注册端口 (需添加到 port-registry.yaml): {sorted(unregistered)}")
         violations += len(unregistered)
     else:
-        print(f"  ✅ 所有代码端口已在 registry 注册")
+        print("  ✅ 所有代码端口已在 registry 注册")
 
     if stale:
         print(f"  ⚠️  Registry 僵尸条目 (代码中未使用): {sorted(stale)}")
