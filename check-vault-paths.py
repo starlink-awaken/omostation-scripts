@@ -79,11 +79,15 @@ def resolve_path(key: str, ssot: dict | None = None) -> str:
 # ── 反 sed 扫描 ──────────────────────────────
 # 排除 SSOT 自身(声明的就是"禁用"),mof L0 元模型,arch 文档
 EXCLUDE_PATTERNS = [
+    r"/check-vault-paths\.py$",      # 自匹配(本检测器代码含禁用模式字符串)
     r"/protocols/vault-paths\.yaml$",
+    r"/vault-paths\.yaml$",          # 任意路径的 vault-paths.yaml(SSOT 自己声明禁用模式是合规的)
+    r"/_archive/",
     r"/_archive/",
     r"/node_modules/",
     r"/\.venv/",
     r"/venv/",
+    r"\.omo/capabilities/",      # PAI 框架运行时测试数据
     r"/__pycache__/",
     r"/\.git/",
     r"/venv-",
