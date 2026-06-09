@@ -192,6 +192,10 @@ def scan_for_port_hardcodes(root: Path = Path("projects/")) -> list[tuple[Path, 
         except (OSError, UnicodeDecodeError):
             continue
         for lineno, line in enumerate(content.splitlines(), 1):
+            # 排除整行注释(# 开头 / # ... inline)/纯字符串示例
+            stripped = line.lstrip()
+            if stripped.startswith("#") or stripped.startswith("//"):
+                continue
             for pat in PORT_HARDCODED_TYPES:
                 m = re.search(pat, line)
                 if not m:
