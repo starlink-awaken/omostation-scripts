@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────
 # omo-cleanup — 定期清理 .omo/ 运行时垃圾
-# 被 Hermes cron 调用，周期：每天一次
+# 被 Hermes cron 每天凌晨调用
 # ──────────────────────────────────────────────
 set -euo pipefail
 
@@ -12,8 +12,6 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 mkdir -p "$(dirname "$LOG")"
 
 # 只清理 .gitignore 规则中明确忽略的运行时目录
-# 绝不触碰 git track 中的治理配置
-
 cleaned=0
 for dir in workers _delivery debt plans run-continuation; do
     target="$OMO_DIR/$dir"
@@ -25,7 +23,7 @@ for dir in workers _delivery debt plans run-continuation; do
     fi
 done
 
-# 清理 _knowledge/*.jsonl（保留 governance-history.jsonl，有审计价值）
+# 清理 _knowledge/*.jsonl（保留 governance-history.jsonl）
 if [ -d "$OMO_DIR/_knowledge" ]; then
     find "$OMO_DIR/_knowledge" -maxdepth 1 -name '*.jsonl' \
         ! -name 'governance-history.jsonl' \
