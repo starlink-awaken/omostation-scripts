@@ -266,10 +266,14 @@ def _detect_return_pattern(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
 
     if has_mix:
         modes = []
-        if has_helper: modes.append("_ok/_error")
-        if has_inject: modes.append("注入式")
-        if has_direct_dict: modes.append("直接 return dict")
-        if has_json_dumps: modes.append("json.dumps")
+        if has_helper:
+            modes.append("_ok/_error")
+        if has_inject:
+            modes.append("注入式")
+        if has_direct_dict:
+            modes.append("直接 return dict")
+        if has_json_dumps:
+            modes.append("json.dumps")
         return f"混合 ({', '.join(modes)})"
     if has_helper:
         return "_ok/_error 辅助函数"
@@ -284,7 +288,6 @@ def _detect_return_pattern(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
 
 def _is_dict_key(node: ast.AST) -> bool:
     """检查节点是否是 dict key"""
-    parent_map: dict = {}
     # We don't track parent mapping when walking, so this is a second pass
     # For now, rely on the positional context; called from within ast.walk
     # This is a heuristic
@@ -382,14 +385,14 @@ def print_report(result: dict):
     print(f"{'='*60}")
 
     # 项目概况
-    print(f"\n📊 项目概况:")
+    print("\n📊 项目概况:")
     print(f"  总工具数:     {result['total_tools']}")
     print(f"  同步/异步:    {result['sync_count']} / {result['async_count']}")
     compliance_icon = "✅" if result["non_compliant"] == 0 else "❌"
     print(f"  合规性:       {result['compliant']}/{result['total_tools']} {compliance_icon}")
 
     # 返回模式分析
-    print(f"\n🔍 返回模式分析:")
+    print("\n🔍 返回模式分析:")
     print(f"  返回类型:     {pretty_dict(result['return_types'])}")
     print(f"  返回模式:     {pretty_dict(result['patterns'])}")
     print(f"  format_version 来源: {pretty_dict(result['format_version_sources'])}")
@@ -399,7 +402,7 @@ def print_report(result: dict):
         print(f"  辅助函数:     {', '.join(result['helper_functions'])}")
 
     # 逐个工具详情
-    print(f"\n📝 工具详情:")
+    print("\n📝 工具详情:")
     for t in result["tools"]:
         icon = "✅" if t["has_format_version_literal"] else "❌"
         async_mark = " (async)" if t["is_async"] else ""
@@ -409,7 +412,7 @@ def print_report(result: dict):
               f"FV:{t['format_version_source']}")
 
     # 风险评分
-    print(f"\n⚠️  风险评分:")
+    print("\n⚠️  风险评分:")
     for r in result["risks"]:
         level_icon = {"高": "🔴", "中": "🟡", "低": "🟢", "无": "⚪"}
         print(f"  {level_icon.get(r['level'], '⚪')} [{r['level']}] {r['category']}: {r['detail']}")

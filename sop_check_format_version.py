@@ -238,11 +238,10 @@ def _check_py_file(filepath: Path) -> list[dict]:
 
         # 如果工具函数本身没有 format_version，检查是否通过 _ok/_error 辅助函数委托
         helper_has_format_version = False
-        via_helper = ""
         if not has_format_version:
             helper_has_format_version = _has_format_version_in_helper(node, tree)
             if helper_has_format_version:
-                via_helper = "（通过 _ok/_error 辅助函数委托）"
+                pass
 
         if not has_format_version and not helper_has_format_version:
             violations.append({

@@ -4,7 +4,6 @@
 在usage.db基础上加org字段，支持按组织汇总。
 """
 
-import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,7 +15,7 @@ def _ensure_org_column() -> sqlite3.Connection:
     USAGE_DB.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(USAGE_DB))
     conn.row_factory = sqlite3.Row
-    conn.executescript("""
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS resource_usage (
             call_id INTEGER PRIMARY KEY AUTOINCREMENT,
             caller TEXT NOT NULL,
@@ -26,9 +25,15 @@ def _ensure_org_column() -> sqlite3.Connection:
             cost_usd REAL DEFAULT 0,
             timestamp TEXT NOT NULL,
             org TEXT DEFAULT 'starlink-core'
-        );
-        CREATE INDEX IF NOT EXISTS idx_usage_org ON resource_usage(org);
+        )
     """)
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(resource_usage)").fetchall()
+    }
+    if "org" not in columns:
+        conn.execute("ALTER TABLE resource_usage ADD COLUMN org TEXT DEFAULT 'starlink-core'")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_org ON resource_usage(org)")
     conn.commit()
     return conn
 

@@ -7,7 +7,6 @@ Checks:
 - Status values are in allowed set
 - Category values are in allowed set
 """
-import os
 import sys
 from pathlib import Path
 
