@@ -35,7 +35,13 @@ def parse_health(val) -> float:
 
 
 def load_records() -> list[dict]:
-    """扫描 audit-rollout 目录, 收集所有 metrics JSON 文件"""
+    """扫描 audit-rollout 目录, 收集所有 metrics JSON 文件。
+
+    支持 3 种 JSON 结构:
+    1. 顶层直接字段: {drift_count, debt_density, health_grade}
+    2. 嵌套 metrics:  {metrics: {drift_count, ...}}
+    3. omostation audit-rollout 格式: {repos: {name: {debt_density, health_grade}}, generated_at}
+    """
     if not AUDIT_DIR.exists():
         return []
     records = []
@@ -43,7 +49,20 @@ def load_records() -> list[dict]:
         if f.suffix == ".json" and f.name.startswith("20"):
             try:
                 data = json.loads(f.read_text(encoding="utf-8"))
-                # 支持两种结构: 顶层直接字段, 或 {"metrics": {...}}
+                # 格式 3: omostation audit-rollout (R46 --include-metrics)
+                if "repos" in data and "generated_at" in data:
+                    for repo_name, repo_data in data.get("repos", {}).items():
+                        records.append(
+                            {
+                                "date": data["generated_at"][:10],
+                                "repo": repo_name,
+                                "drift_count": repo_data.get("total_drift", 0),
+                                "debt_density": float(repo_data.get("debt_density", 0.0)),
+                                "health_grade": parse_health(repo_data.get("health_grade", "R0")),
+                            }
+                        )
+                    continue
+                # 格式 1 或 2
                 inner = data.get("metrics", data)
                 records.append(
                     {
