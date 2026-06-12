@@ -25,6 +25,10 @@ P7-H3: E2 dispatcher cron (monthly + weekly + pre-release) + 5 仓 §17 metrics 
 红线: cross-repo metrics 仅有规划无消费 = 禁止.  本脚本确保 metrics
       落盘 + drift-history 写历史 + index 持续可写.
 
+并发: _update_history_index 走 fcntl.flock (LOCK_EX) 防 race condition,
+      N 并行跑 N 条 entry 全部落盘 (无覆盖丢失).
+      锁文件: .omo/_delivery/audit-rollout/index.json.lock
+
 返回值:
   - primary 成功 → 0
   - primary 失败 + fallback 成功 → 0
@@ -33,6 +37,7 @@ P7-H3: E2 dispatcher cron (monthly + weekly + pre-release) + 5 仓 §17 metrics 
 """
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import subprocess
@@ -264,47 +269,74 @@ def _load_history_index() -> dict[str, Any]:
 
 
 def _update_history_index(mode: str, rollout: dict[str, Any], history_path: Path) -> dict[str, Any]:
-    index = _load_history_index()
-    runs = index.setdefault("runs", [])
-    payload = rollout.get("payload") if isinstance(rollout.get("payload"), dict) else {}
-    repos = payload.get("repos", {}) if isinstance(payload, dict) else {}
-    run_entry: dict[str, Any] = {
-        "generated_at": _now_iso(),
-        "day": _today(),
-        "mode": mode,
-        "trigger_source": _trigger_source(),
-        "returncode": rollout.get("returncode"),
-        "fallback_used": rollout.get("fallback_used"),
-        "primary_returncode": rollout.get("primary_returncode"),
-        "fallback_returncode": rollout.get("fallback_returncode"),
-        "output_path": rollout.get("output_path"),
-        "primary_output_path": rollout.get("primary_output_path"),
-        "fallback_output_path": rollout.get("fallback_output_path"),
-        "primary_error": rollout.get("primary_error"),
-        "repo_count": len(repos) if isinstance(repos, dict) else 0,
-        "history_path": str(history_path.relative_to(ROOT)),
-    }
-    if rollout.get("fallback_error"):
-        run_entry["fallback_error"] = rollout["fallback_error"]
-    runs.append(run_entry)
-    runs.sort(key=lambda item: str(item.get("generated_at", "")))
-    index["runs"] = runs
-    index["summary"] = {
-        "run_count": len(runs),
-        "weekly_runs": sum(1 for item in runs if item.get("mode") == "weekly"),
-        "monthly_runs": sum(1 for item in runs if item.get("mode") == "monthly"),
-        "pre_release_runs": sum(1 for item in runs if item.get("mode") == "pre-release"),
-        "cron_run_count": sum(1 for item in runs if item.get("trigger_source") == "cron"),
-        "manual_run_count": sum(1 for item in runs if item.get("trigger_source") == "manual"),
-        "fallback_used_count": sum(1 for item in runs if item.get("fallback_used")),
-        "failed_count": sum(1 for item in runs if item.get("returncode") not in (0, None)),
-        "latest_output_path": runs[-1]["output_path"] if runs else None,
-        "latest_trigger_source": runs[-1]["trigger_source"] if runs else None,
-    }
+    """index 写回 (LOCK_EX 防 race).
+
+    N 并行跑 N 条 entry 全部落盘 (无覆盖丢失):
+      1. open 锁文件 (LOCK_EX)
+      2. _load_history_index (此时其他进程阻塞)
+      3. append new run entry
+      4. write index.json
+      5. close 锁文件 (LOCK_UN 自动)
+
+    锁文件路径: index_path + ".lock" (与 index 同目录, 不污染 .omo 状态)
+    """
     path = _history_index_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    # 写回 always success, 不抛异常
-    path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    lock_path = path.with_suffix(".lock")
+    lock_handle = open(lock_path, "w", encoding="utf-8")
+    try:
+        fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+        try:
+            # load (在锁内, 避免 read-modify-write race)
+            if path.exists():
+                try:
+                    index = json.loads(path.read_text(encoding="utf-8"))
+                except json.JSONDecodeError:
+                    index = {"runs": []}
+            else:
+                index = {"runs": []}
+            runs = index.setdefault("runs", [])
+            payload = rollout.get("payload") if isinstance(rollout.get("payload"), dict) else {}
+            repos = payload.get("repos", {}) if isinstance(payload, dict) else {}
+            run_entry: dict[str, Any] = {
+                "generated_at": _now_iso(),
+                "day": _today(),
+                "mode": mode,
+                "trigger_source": _trigger_source(),
+                "returncode": rollout.get("returncode"),
+                "fallback_used": rollout.get("fallback_used"),
+                "primary_returncode": rollout.get("primary_returncode"),
+                "fallback_returncode": rollout.get("fallback_returncode"),
+                "output_path": rollout.get("output_path"),
+                "primary_output_path": rollout.get("primary_output_path"),
+                "fallback_output_path": rollout.get("fallback_output_path"),
+                "primary_error": rollout.get("primary_error"),
+                "repo_count": len(repos) if isinstance(repos, dict) else 0,
+                "history_path": str(history_path.relative_to(ROOT)),
+            }
+            if rollout.get("fallback_error"):
+                run_entry["fallback_error"] = rollout["fallback_error"]
+            runs.append(run_entry)
+            runs.sort(key=lambda item: str(item.get("generated_at", "")))
+            index["runs"] = runs
+            index["summary"] = {
+                "run_count": len(runs),
+                "weekly_runs": sum(1 for item in runs if item.get("mode") == "weekly"),
+                "monthly_runs": sum(1 for item in runs if item.get("mode") == "monthly"),
+                "pre_release_runs": sum(1 for item in runs if item.get("mode") == "pre-release"),
+                "cron_run_count": sum(1 for item in runs if item.get("trigger_source") == "cron"),
+                "manual_run_count": sum(1 for item in runs if item.get("trigger_source") == "manual"),
+                "fallback_used_count": sum(1 for item in runs if item.get("fallback_used")),
+                "failed_count": sum(1 for item in runs if item.get("returncode") not in (0, None)),
+                "latest_output_path": runs[-1]["output_path"] if runs else None,
+                "latest_trigger_source": runs[-1]["trigger_source"] if runs else None,
+            }
+            # 写回 (在锁内, 原子 write 对其他进程不可见中间态)
+            path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        finally:
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+    finally:
+        lock_handle.close()
     return index
 
 

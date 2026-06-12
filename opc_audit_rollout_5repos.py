@@ -9,10 +9,12 @@
 
 输出 schema (与 omo cli audit-rollout 兼容):
   .omo/_delivery/audit-rollout/{date}-5repos.json
+  .omo/_delivery/audit-rollout/{date}-{mode}.json (mode 透传; weekly/monthly/pre-release 各自产物)
 """
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -98,6 +100,18 @@ def main() -> int:
     out_path = out_dir / f"{_today()}-5repos.json"
     out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"# wrote: {out_path}", file=sys.stderr)
+
+    # mode-specific 产物 (P7-H3 acceptance: 显式写 mode-specific 文件名,
+    # 让 wrapper monthly/pre-release 跑出时 mode-specific 文件名可分辨)
+    # 默认 mode=weekly 与 wrapper 默认一致; 透传 OPC_MODE 让 monthly/pre-release
+    # 触发时 mode-specific 文件名正确.
+    mode = os.environ.get("OPC_MODE", "weekly")
+    if mode not in ("weekly", "monthly", "pre-release"):
+        mode = "weekly"
+    mode_specific_path = out_dir / f"{_today()}-{mode}.json"
+    mode_specific_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"# wrote mode-specific: {mode_specific_path} (mode={mode})", file=sys.stderr)
+
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0
 
