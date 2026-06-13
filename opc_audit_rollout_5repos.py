@@ -41,6 +41,35 @@ def _today() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
+def _normalize_mode(mode: str | None) -> str:
+    if mode not in ("weekly", "monthly", "pre-release"):
+        return "weekly"
+    return mode
+
+
+def write_outputs(
+    payload: dict[str, Any],
+    *,
+    out_dir: Path | None = None,
+    today: str | None = None,
+    mode: str | None = None,
+) -> tuple[Path, Path]:
+    """统一写 5repos baseline + mode-specific 副本.
+
+    让 5repos.py 自身可独立测试, 不必经 daemon/fallback 才验证 mode-aware 输出契约.
+    """
+    target_dir = out_dir or (ROOT / ".omo" / "_delivery" / "audit-rollout")
+    target_dir.mkdir(parents=True, exist_ok=True)
+    stamp = today or _today()
+    normalized_mode = _normalize_mode(mode or os.environ.get("OPC_MODE", "weekly"))
+    baseline_path = target_dir / f"{stamp}-5repos.json"
+    mode_specific_path = target_dir / f"{stamp}-{normalized_mode}.json"
+    content = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    baseline_path.write_text(content, encoding="utf-8")
+    mode_specific_path.write_text(content, encoding="utf-8")
+    return baseline_path, mode_specific_path
+
+
 def aggregate_5repos() -> dict[str, Any]:
     """调 opc_section17_metrics.py 5 仓 + 产出聚合 JSON."""
     import subprocess
@@ -95,21 +124,9 @@ def aggregate_5repos() -> dict[str, Any]:
 
 def main() -> int:
     payload = aggregate_5repos()
-    out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{_today()}-5repos.json"
-    out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    mode = _normalize_mode(os.environ.get("OPC_MODE", "weekly"))
+    out_path, mode_specific_path = write_outputs(payload, today=_today(), mode=mode)
     print(f"# wrote: {out_path}", file=sys.stderr)
-
-    # mode-specific 产物 (P7-H3 acceptance: 显式写 mode-specific 文件名,
-    # 让 wrapper monthly/pre-release 跑出时 mode-specific 文件名可分辨)
-    # 默认 mode=weekly 与 wrapper 默认一致; 透传 OPC_MODE 让 monthly/pre-release
-    # 触发时 mode-specific 文件名正确.
-    mode = os.environ.get("OPC_MODE", "weekly")
-    if mode not in ("weekly", "monthly", "pre-release"):
-        mode = "weekly"
-    mode_specific_path = out_dir / f"{_today()}-{mode}.json"
-    mode_specific_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"# wrote mode-specific: {mode_specific_path} (mode={mode})", file=sys.stderr)
 
     print(json.dumps(payload, ensure_ascii=False, indent=2))
