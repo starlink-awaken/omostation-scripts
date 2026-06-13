@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# OPC P6 weekly loop cron wrapper.
+#
+# 触发源语义:
+#   - cron 调用 (crontab 行带 INVOCATION_ID=cron + OPC_TRIGGER=cron) → 透传
+#   - manual 调用                                                  → 强制 OPC_TRIGGER=manual
+set -euo pipefail
+
+WORKSPACE="${WORKSPACE:-/Users/xiamingxing/Workspace}"
+cd "$WORKSPACE"
+
+if [ -z "${OPC_TRIGGER:-}" ]; then
+    if [ "${INVOCATION_ID:-}" = "cron" ]; then
+        export OPC_TRIGGER="cron"
+    else
+        export OPC_TRIGGER="manual"
+    fi
+fi
+
+exec python3 scripts/opc_p6_weekly_loop.py
