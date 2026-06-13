@@ -34,12 +34,28 @@ def _load_latest_drift() -> dict[str, Any] | None:
     return json.loads(files[-1].read_text(encoding="utf-8"))
 
 
+def _load_latest_loop_history() -> dict[str, Any] | None:
+    history_path = ROOT / ".omo" / "_control" / "evolution" / "loop" / "history.json"
+    if not history_path.exists():
+        return None
+    try:
+        return json.loads(history_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
 def emit_self_evolution_tasks() -> list[dict[str, Any]]:
     """根据 drift 报告 + radar 候选, 产出 OMO planned tasks.
 
     返回 tasks 列表, 每条 task 是 dict, 含 id/title/source/drift_ref/approval_required.
+
+    latest_week 来源: 每次调用都从 .omo/_control/evolution/loop/history.json 读
+    最新值, 不缓存. 这样 self-evolve 跑出时 nop task 的 latest_week 字段
+    与 loop history 始终一致.
     """
     drift = _load_latest_drift()
+    history = _load_latest_loop_history()
+    latest_week = history.get("summary", {}).get("latest_week") if history is not None else None
     tasks: list[dict[str, Any]] = []
 
     if drift is not None and drift.get("drift_count", 0) > 0:
@@ -105,9 +121,20 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
                 "source": "drift:none",
                 "drift_ref": f".omo/_control/evolution/drift/{_now_iso()[:10]}.json",
                 "approval_required": True,
+                "human_approval_required": True,
+                "approval_state": "awaiting_human",
                 "last_run_at": _now_iso(),
+                "loop_history_ref": ".omo/_control/evolution/loop/history.json",
+                "latest_week": latest_week,
             }
         )
+    else:
+        # drift > 0 路径, 给每条 task 标记 latest_week (与 loop history 对齐)
+        for task in tasks:
+            task["loop_history_ref"] = ".omo/_control/evolution/loop/history.json"
+            task["latest_week"] = latest_week
+            task["human_approval_required"] = True
+            task["approval_state"] = "awaiting_human"
     return tasks
 
 
@@ -130,9 +157,13 @@ def write_planned_tasks(tasks: list[dict[str, Any]]) -> list[Path]:
             f"title: {t['title']!r}\n"  # yaml-safe quote: 含 `:`/`\n` 的 title 不会破格式
             f"status: planned\n"
             f"approval_required: {str(t['approval_required']).lower()}\n"
+            f"human_approval_required: {str(t.get('human_approval_required', t['approval_required'])).lower()}\n"
+            f"approval_state: {t.get('approval_state', 'awaiting_human')!r}\n"
             f"created_at: \"{ts}\"\n"
             f"source: {t['source']!r}\n"
             f"drift_ref: {t['drift_ref']!r}\n"
+            f"loop_history_ref: {t.get('loop_history_ref', '.omo/_control/evolution/loop/history.json')!r}\n"
+            f"review_lane: 'opc-p6-self-evolution-board'\n"
             f"prerequisite_for: OPC-P6\n"
             f"red_lines:\n"
             f"  - 'self-evolution task 仅落 planned/, 永不入 active/ 除非 human approval'\n"
@@ -140,6 +171,8 @@ def write_planned_tasks(tasks: list[dict[str, Any]]) -> list[Path]:
         )
         if t.get("last_run_at"):
             body += f"last_run_at: \"{t['last_run_at']}\"\n"
+        if t.get("latest_week"):
+            body += f"latest_week: {t['latest_week']!r}\n"
         out.write_text(body, encoding="utf-8")
         paths.append(out)
     return paths
