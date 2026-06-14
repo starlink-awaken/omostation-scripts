@@ -101,4 +101,23 @@ fi
 echo "0 in_progress 任务"
 echo ""
 
+# 9. done 目录一致性
+echo "9. done 目录只允许 done/completed 状态..."
+DONE_BAD=$(
+    find "$WORKSPACE/.omo/tasks/done" -mindepth 2 -maxdepth 2 -name "*.yaml" -print0 2>/dev/null \
+        | xargs -0 grep -El "status: (pending|review|in_progress|planned)" 2>/dev/null || true
+)
+REGISTRY_DONE_BAD=$(
+    find "$WORKSPACE/.omo/tasks/registry/done" -maxdepth 1 -name "*.yaml" -print0 2>/dev/null \
+        | xargs -0 grep -El "status: (pending|review|in_progress|planned)" 2>/dev/null || true
+)
+if [ -n "$DONE_BAD$REGISTRY_DONE_BAD" ]; then
+    echo "Found non-final task status inside done carriers"
+    [ -n "$DONE_BAD" ] && echo "$DONE_BAD"
+    [ -n "$REGISTRY_DONE_BAD" ] && echo "$REGISTRY_DONE_BAD"
+    exit 1
+fi
+echo "done 目录一致"
+echo ""
+
 echo "=== 所有 CI 检查通过 ==="
