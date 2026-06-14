@@ -53,45 +53,53 @@ try:
     from scripts.omo_redaction import redact_sensitive_text
     from scripts.omo_task_schema import validate_active_tasks, validate_planned_tasks, validate_task_file
 except ModuleNotFoundError:
-    from omo_admission import evaluate_worker_envelope, request_conditional_approval
-    from omo_governance import propose_truth_mutation
-    from omo_contract_request import (
+    # P42-W0-B 现代化: scripts.omo_X → omo.omo_X (旧 scripts/ 路径已废弃, 模块迁到 projects/omo/src/omo/)
+    # 旧 except 块写 "from omo_X" (没包) 也错. 真路径: from omo.omo_X
+    # 注入 omo src 路径, 兼容从 scripts/omo/ 目录直接 python omo_worker.py 跑的场景
+    import sys
+    from pathlib import Path
+    _omo_src = Path(__file__).resolve().parents[2] / "projects" / "omo" / "src"
+    if str(_omo_src) not in sys.path:
+        sys.path.insert(0, str(_omo_src))
+    from omo.omo_admission import evaluate_worker_envelope, request_conditional_approval
+    from omo.omo_governance import propose_truth_mutation
+    from omo.omo_contract_request import (
         build_contract_proposal,
         build_contract_request,
         contract_request_ref,
     )
-    from omo_io import write_text_atomic, write_yaml_atomic
-    from omo_handoff_index import write_handoff_index
-    from omo_metrics import write_worker_utilization_summary
-    from omo_promotion_approval import evaluate_promotion_approval
-    from omo_promotion_history import build_promotion_history
-    from omo_promotion_request import (
+    from omo.omo_io import write_text_atomic, write_yaml_atomic
+    from omo.omo_handoff_index import write_handoff_index
+    from omo.omo_metrics import write_worker_utilization_summary
+    from omo.omo_promotion_approval import evaluate_promotion_approval
+    from omo.omo_promotion_history import build_promotion_history
+    from omo.omo_promotion_request import (
         build_promotion_approval_proposal,
         build_promotion_approval_request,
         promotion_approval_ref,
     )
-    from omo_promotion_approval_status import (
+    from omo.omo_promotion_approval_status import (
         build_promotion_approval_status_packet,
         render_promotion_approval_status_markdown,
     )
-    from omo_promotion_approval_history import build_promotion_approval_history
-    from omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
-    from omo_governance_overlay import build_governance_overlay_status
-    from omo_governance_overlay_approval_prep import (
+    from omo.omo_promotion_approval_history import build_promotion_approval_history
+    from omo.omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
+    from omo.omo_governance_overlay import build_governance_overlay_status
+    from omo.omo_governance_overlay_approval_prep import (
         build_governance_overlay_approval_prep_history,
         build_governance_overlay_approval_prep_status,
     )
-    from omo_governance_overlay_approval_prep_aging import build_governance_overlay_approval_prep_aging
-    from omo_governance_overlay_approval_prep_analytics import build_governance_overlay_approval_prep_analytics
-    from omo_governance_overlay_approval_prep_diff import build_governance_overlay_approval_prep_diff
-    from omo_governance_overlay_approval_prep_trend import build_governance_overlay_approval_prep_trend
-    from omo_governance_overlay_loop import plan_governance_overlay_cycle
-    from omo_governance_overlay_targets import evaluate_governance_overlay_planned_target
-    from omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
-    from omo_rules import evaluate_rule_bundle
-    from omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
-    from omo_redaction import redact_sensitive_text
-    from omo_task_schema import validate_active_tasks, validate_planned_tasks, validate_task_file
+    from omo.omo_governance_overlay_approval_prep_aging import build_governance_overlay_approval_prep_aging
+    from omo.omo_governance_overlay_approval_prep_analytics import build_governance_overlay_approval_prep_analytics
+    from omo.omo_governance_overlay_approval_prep_diff import build_governance_overlay_approval_prep_diff
+    from omo.omo_governance_overlay_approval_prep_trend import build_governance_overlay_approval_prep_trend
+    from omo.omo_governance_overlay_loop import plan_governance_overlay_cycle
+    from omo.omo_governance_overlay_targets import evaluate_governance_overlay_planned_target
+    from omo.omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
+    from omo.omo_rules import evaluate_rule_bundle
+    from omo.omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
+    from omo.omo_redaction import redact_sensitive_text
+    from omo.omo_task_schema import validate_active_tasks, validate_planned_tasks, validate_task_file
 
 
 def _timestamp_slug(now: str | None = None) -> str:
