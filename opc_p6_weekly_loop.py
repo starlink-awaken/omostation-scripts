@@ -432,7 +432,59 @@ def main() -> int:
     print(f"# week: {payload['week']}", file=sys.stderr)
     print(f"# evidence: {md_path.relative_to(ROOT)}", file=sys.stderr)
     print(f"# json: .omo/_control/evolution/loop/{payload['week']}.json", file=sys.stderr)
+    # P6 增强 (2026-06-14): weekly loop 末尾跑 mof-state-bridge --strict
+    _run_mof_state_bridge_cron()
     return 0
+
+
+def _run_mof_state_bridge_cron() -> None:
+    """P6 增强: weekly loop 跑完后跑 mof-state-bridge --strict 写 5repos 兼容字段."""
+    import subprocess
+    out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    result = subprocess.run(
+        ["python3", "projects/ecos/src/ecos/ssot/tools/mof-state-bridge.py",
+         "--json", "--strict"],
+        cwd=str(ROOT),
+        capture_output=True, text=True, timeout=60,
+    )
+    in_sync = False
+    m1_count = omo_count = paired = drift = m1_only = 0
+    if result.returncode == 0:
+        try:
+            data = json.loads(result.stdout.strip())
+            diff = data.get("diff", {})
+            m1_count = data.get("m1_count", 0)
+            omo_count = data.get("omo_count", 0)
+            paired = data.get("paired", 0)
+            drift = len(diff.get("drifts", []))
+            m1_only = len(diff.get("m1_only", []))
+            in_sync = m1_only == 0
+        except json.JSONDecodeError:
+            pass
+    payload_out = {
+        "generated_at": stamp,
+        "trigger_source": os.environ.get("OPC_TRIGGER", "manual"),
+        "mode": os.environ.get("OPC_MODE", "weekly"),
+        "source": "opc_p6_weekly_loop",
+        "mof_state_bridge": {
+            "in_sync": in_sync,
+            "m1_count": m1_count,
+            "omo_count": omo_count,
+            "paired": paired,
+            "drift_count": drift,
+            "m1_only": m1_only,
+            "blocking": not in_sync,
+        },
+    }
+    (out_dir / f"{today}-mof-state-bridge.json").write_text(
+        json.dumps(payload_out, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    if not in_sync:
+        print(f"⚠️  mof-state-bridge 失同步: {m1_only} M1 only, written to 5repos", file=sys.stderr)
 
 
 if __name__ == "__main__":
