@@ -153,38 +153,50 @@ def check_port_conflicts() -> int:
 
 def check_doc_freshness() -> int:
     """检查关键文档保鲜度。返回 violations 数量."""
-    violations = 0
+    import os
     import time
 
-    critical_docs: list[tuple[str, str]] = [
-        ("Workspace/CLAUDE.md", "根 CLAUDE.md"),
-        ("Workspace/LAYER-INDEX.md", "分层索引"),
-        ("Workspace/projects/kairon/CLAUDE.md", "kairon CLAUDE.md"),
-        ("Documents/@学习进化/CLAUDE.md", "Vault CLAUDE.md"),
-    ]
-
+    is_ci = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"))
     now = time.time()
     home = Path.home()
+    violations = 0
 
-    for rel_path, label in critical_docs:
-        if rel_path.startswith("Documents/"):
-            full_path = home / rel_path
-        else:
-            full_path = Path("/Users/xiamingxing") / rel_path
-
-        if not full_path.exists():
-            print(f"⚠ {label} ({rel_path}): 文件不存在")
+    # 仓库内文档 (CI + 本地都查, 用 WORKSPACE 相对路径, 不硬编码用户家目录)
+    repo_docs: list[tuple[str, str]] = [
+        ("CLAUDE.md", "根 CLAUDE.md"),
+        ("LAYER-INDEX.md", "分层索引"),
+        ("projects/kairon/CLAUDE.md", "kairon CLAUDE.md"),
+    ]
+    for rel, label in repo_docs:
+        full = WORKSPACE / rel
+        if not full.exists():
+            print(f"⚠ {label} ({rel}): 文件不存在")
             violations += 1
             continue
-
-        mtime = full_path.stat().st_mtime
-        days_old = (now - mtime) / 86400
-
+        days_old = (now - full.stat().st_mtime) / 86400
         if days_old > 90:
             print(f"🔴 {label}: {days_old:.0f} 天未更新 (>90d, 阻断)")
             violations += 1
         elif days_old > 30:
             print(f"🟡 {label}: {days_old:.0f} 天未更新 (>30d, 警告)")
+
+    # 本地知识库文档 (~/Documents): 仅本地检查, CI 跳过 (CI 无 ~/Documents)
+    if not is_ci:
+        vault_docs: list[tuple[str, str]] = [
+            ("@学习进化/CLAUDE.md", "Vault CLAUDE.md"),
+        ]
+        for rel, label in vault_docs:
+            full = home / "Documents" / rel
+            if not full.exists():
+                print(f"⚠ {label} (~/Documents/{rel}): 文件不存在")
+                violations += 1
+                continue
+            days_old = (now - full.stat().st_mtime) / 86400
+            if days_old > 90:
+                print(f"🔴 {label}: {days_old:.0f} 天未更新 (>90d, 阻断)")
+                violations += 1
+            elif days_old > 30:
+                print(f"🟡 {label}: {days_old:.0f} 天未更新 (>30d, 警告)")
 
     return violations
 
