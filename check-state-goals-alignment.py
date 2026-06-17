@@ -55,7 +55,7 @@ def main() -> int:
 
     task_ids: set[str] = set()
     for group in ("active", "blocked", "done"):
-        for task_file in (omo_dir / "tasks" / group).glob("*.yaml"):
+        for task_file in (omo_dir / "tasks" / group).rglob("*.yaml"):
             task = yaml.safe_load(task_file.read_text(encoding="utf-8")) or {}
             task_id = task.get("id")
             if not task_id:
