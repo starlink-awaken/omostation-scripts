@@ -207,6 +207,36 @@ def scan_for_port_hardcodes(root: Path = Path("projects/")) -> list[tuple[Path, 
     return violations
 
 
+# ── 端口硬编码 baseline (增量 enforce) ──────────────────
+# 历史: 子模块内部已有端口硬编码 (kairon 8765 / agora 8080 等) 属治理边界外.
+# baseline 锚定已知历史 → 增量 (新 file:port) 才 fail, 全景容忍.
+# DRY 对齐 omo-logs-audit baseline 模式 (.omo/_knowledge/_audit_baseline.json).
+PORT_BASELINE_PATH = Path(__file__).resolve().parents[1] / "protocols" / "port-hardcode-baseline.yaml"
+
+
+def load_port_baseline() -> set[str]:
+    """读 baseline 锚点. 返回 {relpath:port} 集合; 文件不存在则空集 (全景严格模式)."""
+    if not PORT_BASELINE_PATH.exists():
+        return set()
+    data = yaml.safe_load(PORT_BASELINE_PATH.read_text(encoding="utf-8")) or {}
+    return set(data.get("entries", []))
+
+
+def write_port_baseline(violations: list[tuple[Path, int, int, str]]) -> int:
+    """把当前端口违规刷新进 baseline (锚定已知历史). 返回锚定条数."""
+    entries = sorted({f"{f}:{p}" for f, _, p, _ in violations})
+    payload = {
+        "comment": "端口硬编码 baseline (历史已知, 增量 file:port 才 fail). 刷新: python3 scripts/check-vault-paths.py --baseline-init",
+        "count": len(entries),
+        "entries": entries,
+    }
+    PORT_BASELINE_PATH.write_text(
+        yaml.safe_dump(payload, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    return len(entries)
+
+
 # ── 主入口 ──────────────────────────────────
 def main() -> int:
     ap = argparse.ArgumentParser(prog="check-vault-paths")
@@ -216,7 +246,12 @@ def main() -> int:
     ap.add_argument("--validate", action="store_true", help="校验必填字段")
     ap.add_argument("--all", action="store_true", help="全跑(check + validate)")
     ap.add_argument("--json", action="store_true", help="JSON 输出")
+    ap.add_argument("--baseline-init", action="store_true", help="端口: 把当前违规写入 baseline (刷新锚点, 隐含 --check-ports)")
+    ap.add_argument("--strict", action="store_true", help="端口: 忽略 baseline, 全景严格扫描")
     args = ap.parse_args()
+
+    if args.baseline_init:
+        args.check_ports = True  # --baseline-init 隐含端口扫描
 
     if args.resolve:
         print(resolve_path(args.resolve))
@@ -247,21 +282,36 @@ def main() -> int:
 
     if args.all or args.check_ports:
         port_violations = scan_for_port_hardcodes()
-        if port_violations:
-            # 去重 by file:port
-            by_file = {}
-            for f, ln, p, _ in port_violations:
-                by_file.setdefault(f, set()).add(p)
+        # 去重 by file:port
+        by_file: dict[Path, set[int]] = {}
+        for f, ln, p, _ in port_violations:
+            by_file.setdefault(f, set()).add(p)
+        all_hits = {f"{f}:{p}" for f, ports in by_file.items() for p in ports}
+
+        if args.baseline_init:
+            n = write_port_baseline(port_violations)
             if not args.json:
-                print(f"\n❌ 端口硬编码命中 {sum(len(v) for v in by_file.values())} 处 ({len(by_file)} 个文件):")
-                for f, ports in sorted(by_file.items()):
-                    print(f"  {f}: ports={sorted(ports)}")
-                print("     → 改用 protocols/port-registry.yaml + env 注入(测试 fixture 除外)")
-            port_rc = 1
-        else:
-            if not args.json:
-                print("\n✅ 端口硬编码扫描通过(生产代码)")
+                print(f"✅ 端口 baseline 已刷新: {n} 处锚定 → {PORT_BASELINE_PATH.name}")
             port_rc = 0
+        else:
+            # baseline 增量: 非严格模式 → 只对增量 fail; --strict 则全景严格
+            baseline = set() if args.strict else load_port_baseline()
+            delta = sorted(all_hits - baseline)
+            tolerated = len(all_hits) - len(delta)
+            if delta:
+                if not args.json:
+                    print(f"\n❌ 端口硬编码增量 {len(delta)} 处 (全景 {len(all_hits)}, baseline 容忍 {tolerated}):")
+                    for hit in delta:
+                        print(f"  {hit}")
+                    print("     → 改用 protocols/port-registry.yaml + env 注入, 或 --baseline-init 锚定")
+                port_rc = 1
+            else:
+                if not args.json:
+                    if all_hits:
+                        print(f"\n✅ 端口硬编码: 增量 0 (全景 {len(all_hits)}, baseline 容忍 {tolerated})")
+                    else:
+                        print("\n✅ 端口硬编码扫描通过(生产代码)")
+                port_rc = 0
     else:
         port_rc = 0
 
