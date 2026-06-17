@@ -54,6 +54,7 @@ def main() -> int:
     goal_task_ids = _current_goal_task_ids(goals)
 
     task_ids: set[str] = set()
+    done_ids: set[str] = set()  # done 历史 task 不算 orphaned (已完成的可在 current goals 之外)
     for group in ("active", "blocked", "done"):
         for task_file in (omo_dir / "tasks" / group).rglob("*.yaml"):
             task = yaml.safe_load(task_file.read_text(encoding="utf-8")) or {}
@@ -66,9 +67,11 @@ def main() -> int:
             if task_phase is None and task_id not in goal_task_ids:
                 continue
             task_ids.add(task_id)
+            if group == "done":
+                done_ids.add(task_id)
 
     missing = sorted(goal_task_ids - task_ids)
-    orphaned = sorted(task_ids - goal_task_ids)
+    orphaned = sorted((task_ids - done_ids) - goal_task_ids)
     flags = []
     if missing:
         flags.append(f"missing_goal_tasks:{','.join(missing)}")
