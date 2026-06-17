@@ -104,7 +104,17 @@ def check_port_conflicts() -> int:
             for line in py_file.read_text(encoding="utf-8").split("\n"):
                 if "port" in line.lower() and any(c.isdigit() for c in line):
                     for known_port in known_ports:
-                        if str(known_port) in line and "=" in line:
+                        # 排除非端口数字 (false positive): token_budget/max_tokens/时间戳/stars 等
+                        # 避免 "8000" substring 误匹配 "token_budget=8000" / "max_tokens=128000"
+                        _non_port = (
+                            "token_budget", "max_tokens", "lastseen", "last_seen",
+                            "stars", "now -", "elapsed", "retry_count", "backoff",
+                        )
+                        if (
+                            str(known_port) in line
+                            and "=" in line
+                            and not any(t in line.lower() for t in _non_port)
+                        ):
                             ports_found.setdefault(known_port, []).append(str(py_file))
         except Exception:
             pass
