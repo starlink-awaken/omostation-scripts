@@ -26,6 +26,11 @@ if not (ROOT / "projects").exists():
     if override:
         ROOT = Path(override)
 
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
+from omo.opc_phase_paths import resolve_opc_phase_task_path
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -79,7 +84,8 @@ def detect_doc_drift() -> dict[str, Any]:
     检测: docs/OPC-PHASE4-MODEL-COMPUTE.md 与 .omo/tasks/planned/OPC-P4-MODEL-COMPUTE.yaml
     的 gate_status 是否一致.
     """
-    plan = _read_yaml(".omo/tasks/planned/OPC-P4-MODEL-COMPUTE.yaml")
+    plan_rel = str(resolve_opc_phase_task_path(ROOT, "OPC-P4-MODEL-COMPUTE").relative_to(ROOT))
+    plan = _read_yaml(plan_rel)
     plan_gate_status = plan.get("gate_status")
     phase_doc = _read("docs/OPC-PHASE4-MODEL-COMPUTE.md")
     doc_says_passed = "Gate E passed" in phase_doc and "opc_phase4_gate_e_passed" in phase_doc
@@ -87,6 +93,7 @@ def detect_doc_drift() -> dict[str, Any]:
     return {
         "kind": "doc_drift",
         "ts": _now_iso(),
+        "plan_ref": plan_rel,
         "plan_gate_status": plan_gate_status,
         "doc_says_passed": doc_says_passed,
         "consistent": consistent,
@@ -177,10 +184,9 @@ def main() -> int:
         "results": results,
     }
     out_dir = ROOT / ".omo" / "_control" / "evolution" / "drift"
-    out_dir.mkdir(parents=True, exist_ok=True)
     # 时间戳到秒, 避免同日多次跑相互覆盖 (复验 反馈: 同日同文件覆盖丢证据)
     out_path = out_dir / f"{datetime.now(UTC).strftime('%Y-%m-%dT%H%M%S')}.json"
-    out_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(out_path, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     print(f"# wrote: {out_path}", file=sys.stderr)

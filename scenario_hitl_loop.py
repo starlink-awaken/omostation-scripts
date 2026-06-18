@@ -7,10 +7,8 @@ Verify the MutationProposal and Cockpit HITL workflow.
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import sys
-import yaml
 from pathlib import Path
 from datetime import UTC, datetime
 
@@ -20,17 +18,16 @@ sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
 sys.path.insert(0, str(ROOT / "projects" / "cockpit" / "web"))
 
 async def run_experiment():
+    from omo.omo_cockpit_bridge import list_hitl_proposals
+    from omo.omo_ingress import remove_debt_item, upsert_debt_item
+
     print("🧪 Starting Scenario Experiment 4: HITL Approval Loop")
     
     os.environ["WORKSPACE"] = str(ROOT)
-    debt_dir = ROOT / ".omo" / "debt" / "items"
-    proposal_dir = ROOT / ".omo" / "state" / "proposals"
-    debt_dir.mkdir(parents=True, exist_ok=True)
-    proposal_dir.mkdir(parents=True, exist_ok=True)
+    omo_dir = ROOT / ".omo"
     
     # 1. Create a simulated Budget Debt
-    debt_id = "DEBT-HITL-TEST-001"
-    debt_path = debt_dir / f"{debt_id}.yaml"
+    debt_id = "DEBT-BUDGET-TEST-001"
     debt_payload = {
         "id": debt_id,
         "title": "Budget Exhausted (Simulation)",
@@ -39,7 +36,12 @@ async def run_experiment():
         "severity": "medium",
         "registered_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     }
-    debt_path.write_text(yaml.safe_dump(debt_payload))
+    upsert_debt_item(
+        omo_dir,
+        debt_data=debt_payload,
+        ingress_plane="scripts/scenario_hitl_loop.py",
+        source_ref=f"scenario:hitl:{debt_id}",
+    )
     print(f"📄 Created simulated debt: {debt_id}")
 
     # 2. Run Evolution Loop to generate Proposal
@@ -49,19 +51,18 @@ async def run_experiment():
     loop.run_once()
     
     proposal_id = f"PROP-{debt_id.replace('DEBT-', '')}"
-    proposal_path = proposal_dir / f"{proposal_id}.yaml"
-    
-    if proposal_path.exists():
+    proposals = list_hitl_proposals(omo_dir)
+    if any(item.get("id") == proposal_id for item in proposals):
         print(f"✅ SUCCESS: MutationProposal {proposal_id} generated.")
     else:
-        print(f"❌ FAILURE: MutationProposal not generated at {proposal_path}")
+        print(f"❌ FAILURE: MutationProposal not generated: {proposal_id}")
         return False
 
     # 3. Simulate Cockpit HITL Approval
-    # We call the logic inside dashboard_server.py directly to avoid starting the full server
-    from src.cockpit.dashboard_server import api_approve_proposal
+    # We call the logic inside api_proposals.py directly to avoid starting the full server
+    from src.cockpit.web.api_proposals import api_approve_proposal
     print(f"⚖️  Simulating Human Approval for {proposal_id}...")
-    
+
     # Mocking the Path in api_approve_proposal as it might be hardcoded to HOME
     response = await api_approve_proposal(proposal_id)
     
@@ -79,14 +80,20 @@ async def run_experiment():
         return False
 
     # 4. Verify Queue Clearance
-    if not proposal_path.exists():
+    proposals = list_hitl_proposals(omo_dir)
+    if not any(item.get("id") == proposal_id for item in proposals):
         print("✅ SUCCESS: Proposal cleared from the queue after approval.")
     else:
         print("❌ FAILURE: Proposal still exists in the queue.")
         return False
 
     # Cleanup
-    debt_path.unlink()
+    remove_debt_item(
+        omo_dir,
+        debt_id=debt_id,
+        actor="scripts/scenario_hitl_loop.py",
+        source_ref=f"scenario:hitl:{debt_id}",
+    )
     print("\n🎊 Experiment 4 Passed: HITL Approval Loop verified.")
     return True
 

@@ -34,7 +34,8 @@ async def run_experiment():
     worker_node = SwarmNode(
         node_id="worker-node-1",
         host="127.0.0.1",
-        port=8080,
+        port=7455,
+        mcp_port=7422,
         role="worker",
         last_heartbeat=9999999999.0
     )
@@ -49,7 +50,7 @@ async def run_experiment():
     print(f"📡 Dispatching message to {target} via NetworkTransport...")
     
     # This should trigger the HTTP Forwarding path in A2ANetworkTransport
-    # Since we don't have a real HTTP server on 8080, we expect a 'forward_failed' 
+    # Since we don't have a real HTTP server on 7422, we expect a 'forward_failed' 
     # connection error, which PROVES it hit the right code path.
     
     result = await transport.send_message_async(target, message, timeout=2.0)

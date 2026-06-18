@@ -13,6 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_SRC = ROOT / "projects" / "runtime" / "src"
 LLM_GATEWAY_SRC = ROOT / "projects" / "llm-gateway" / "src"
 OMO_SRC = ROOT / "projects" / "omo" / "src"
+sys.path.insert(0, str(OMO_SRC))
+
+from omo.omo_io import write_text_atomic
 
 
 def _load_jsonl_last(path: Path) -> dict:
@@ -72,14 +75,12 @@ def main() -> int:
         audit_record = _load_jsonl_last(audit_log)
 
         e4_dir = ROOT / ".omo" / "tasks" / "registry" / "done" / "OPC-P4-E4"
-        e4_dir.mkdir(parents=True, exist_ok=True)
-        (e4_dir / "llm-audit-sample.json").write_text(
+        write_text_atomic(
+            e4_dir / "llm-audit-sample.json",
             json.dumps(audit_record, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
         )
 
         rollout_out = ROOT / ".omo" / "_delivery" / "audit-rollout" / "2026-06-12-opc-p4.json"
-        rollout_out.parent.mkdir(parents=True, exist_ok=True)
         rollout_cmd = [
             "python3",
             "-m",
@@ -101,7 +102,8 @@ def main() -> int:
             env={**os.environ, "PYTHONPATH": str(OMO_SRC)},
             check=False,
         )
-        (e4_dir / "audit-rollout-summary.md").write_text(
+        write_text_atomic(
+            e4_dir / "audit-rollout-summary.md",
             "\n".join(
                 [
                     "# OPC P4 E4 rollout summary",
@@ -116,7 +118,6 @@ def main() -> int:
                     "",
                 ]
             ),
-            encoding="utf-8",
         )
 
         # E3: budget reject registers formal debt
@@ -133,8 +134,8 @@ def main() -> int:
 
         debt_path = ROOT / ".omo" / "debt" / "items" / "DEBT-OPC-P4-BUDGET-OPC-P4-BUDGET-DEMO.yaml"
         e3_dir = ROOT / ".omo" / "tasks" / "registry" / "done" / "OPC-P4-E3"
-        e3_dir.mkdir(parents=True, exist_ok=True)
-        (e3_dir / "budget-reject-summary.md").write_text(
+        write_text_atomic(
+            e3_dir / "budget-reject-summary.md",
             "\n".join(
                 [
                     "# OPC P4 E3 budget reject summary",
@@ -144,7 +145,6 @@ def main() -> int:
                     "",
                 ]
             ),
-            encoding="utf-8",
         )
     finally:
         detection.detect_backends = original_detect

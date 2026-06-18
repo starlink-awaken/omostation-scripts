@@ -17,6 +17,9 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
 
 
 def _now_iso() -> str:
@@ -90,14 +93,12 @@ def _update_history(payload: dict[str, Any]) -> dict[str, Any]:
         "latest_day": runs[-1]["day"] if runs else None,
     }
     path = _history_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(history, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(path, json.dumps(history, ensure_ascii=False, indent=2) + "\n")
     return history
 
 
 def _write_daily_snapshot(payload: dict[str, Any], history: dict[str, Any]) -> Path:
     out_dir = ROOT / ".omo" / "_control" / "evolution" / "radar"
-    out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{_day_bucket()}.json"
     snapshot = {
         "generated_at": payload["generated_at"],
@@ -107,7 +108,7 @@ def _write_daily_snapshot(payload: dict[str, Any], history: dict[str, Any]) -> P
         "archive_path": payload.get("archive_path"),
         "history": history.get("summary", {}),
     }
-    out_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(out_path, json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n")
     return out_path
 
 
@@ -129,7 +130,6 @@ def _run_mof_state_bridge_cron() -> None:
     """P5 增强: cron 跑完后跑 mof-state-bridge --strict 写 5repos 兼容字段."""
     import subprocess
     out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
-    out_dir.mkdir(parents=True, exist_ok=True)
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     result = subprocess.run(
@@ -167,9 +167,9 @@ def _run_mof_state_bridge_cron() -> None:
             "blocking": not in_sync,
         },
     }
-    (out_dir / f"{today}-mof-state-bridge.json").write_text(
+    write_text_atomic(
+        out_dir / f"{today}-mof-state-bridge.json",
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
     )
     if not in_sync:
         print(f"⚠️  mof-state-bridge 失同步: {m1_only} M1 only, written to 5repos", file=sys.stderr)

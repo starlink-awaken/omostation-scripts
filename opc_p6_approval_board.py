@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,9 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
 
 
 def _now_iso() -> str:
@@ -84,10 +88,9 @@ def build_board() -> dict[str, Any]:
 
 def write_board(board: dict[str, Any]) -> tuple[Path, Path]:
     out_dir = ROOT / ".omo" / "_control" / "evolution" / "approval-board"
-    out_dir.mkdir(parents=True, exist_ok=True)
     json_path = out_dir / "current.json"
     md_path = out_dir / "current.md"
-    json_path.write_text(json.dumps(board, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(json_path, json.dumps(board, ensure_ascii=False, indent=2) + "\n")
 
     lines = [
         "# OPC P6 approval board",
@@ -107,7 +110,7 @@ def write_board(board: dict[str, Any]) -> tuple[Path, Path]:
         lines.append(
             f"| {item['task_id']} | {item['status']} | {item['approval_state']} | {item.get('latest_week') or '-'} | `{item['task_ref']}` |"
         )
-    md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_text_atomic(md_path, "\n".join(lines) + "\n")
     return json_path, md_path
 
 

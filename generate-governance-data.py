@@ -19,6 +19,12 @@ from pathlib import Path
 import yaml
 
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
+
+
 def load_yaml(path: Path) -> dict:
     """加载 YAML 文件"""
     with open(path, encoding="utf-8") as f:
@@ -77,8 +83,7 @@ def main():
     governance_data["debt"]["resolution_rate"] = resolved / total if total > 0 else 0
     
     # 写入文件
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(governance_data, f, indent=2, ensure_ascii=False)
+    write_text_atomic(output_path, json.dumps(governance_data, indent=2, ensure_ascii=False) + "\n")
     
     print(f"✅ 治理数据已生成: {output_path}")
     print(f"   健康度: {governance_data['governance']['health_score']:.1f}")

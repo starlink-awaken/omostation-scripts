@@ -17,18 +17,22 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
+from omo.opc_phase_paths import PHASE_TASK_IDS, resolve_opc_phase_task_path
 
 
 PHASES = [
-    ("P0", "Gate A", ".omo/tasks/done/OPC-P0-BASELINE.yaml"),
-    ("P1", "Gate B", ".omo/tasks/done/OPC-P1-ENTRY-CONVERGENCE.yaml"),
-    ("P1.5", "Gate B2", ".omo/tasks/done/OPC-P15-GOVERNANCE.yaml"),
-    ("P2", "Gate C", ".omo/tasks/done/OPC-P2-GATE-C.yaml"),
-    ("P3", "Gate D", ".omo/tasks/registry/done/OPC-P3-GATE-D-OPENING.yaml"),
-    ("P4", "Gate E", ".omo/tasks/planned/OPC-P4-MODEL-COMPUTE.yaml"),
-    ("P5", "Gate F", ".omo/tasks/planned/OPC-P5-SCENARIOS.yaml"),
-    ("P6", "Gate G", ".omo/tasks/planned/OPC-P6-EVOLUTION-LOOP.yaml"),
-    ("P7", "Gate H", ".omo/tasks/planned/OPC-P7-RELEASE-TRAIN.yaml"),
+    ("P0", "Gate A", ".omo/tasks/done/OPC-P0-BASELINE.yaml", None),
+    ("P1", "Gate B", ".omo/tasks/done/OPC-P1-ENTRY-CONVERGENCE.yaml", None),
+    ("P1.5", "Gate B2", ".omo/tasks/done/OPC-P15-GOVERNANCE.yaml", None),
+    ("P2", "Gate C", ".omo/tasks/done/OPC-P2-GATE-C.yaml", None),
+    ("P3", "Gate D", None, "OPC-P3-GATE-D-OPENING"),
+    ("P4", "Gate E", None, "OPC-P4-MODEL-COMPUTE"),
+    ("P5", "Gate F", None, "OPC-P5"),
+    ("P6", "Gate G", None, "OPC-P6"),
+    ("P7", "Gate H", None, "OPC-P7"),
 ]
 
 
@@ -45,13 +49,19 @@ def _read_yaml(rel: str) -> dict[str, Any] | None:
     return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
 
 
-def _check_phase(phase: str, gate: str, plan_rel: str) -> dict[str, Any]:
-    payload = _read_yaml(plan_rel)
+def _check_phase(phase: str, gate: str, plan_rel: str | None, task_id: str | None) -> dict[str, Any]:
+    resolved_rel = plan_rel
+    if task_id:
+        try:
+            resolved_rel = str(resolve_opc_phase_task_path(ROOT, task_id).relative_to(ROOT))
+        except FileNotFoundError:
+            resolved_rel = plan_rel or f".omo/tasks/*/{task_id}.yaml"
+    payload = _read_yaml(resolved_rel) if resolved_rel else None
     if payload is None:
         return {
             "phase": phase,
             "gate": gate,
-            "plan_file": plan_rel,
+            "plan_file": resolved_rel,
             "exists": False,
             "gate_status": "missing",
             "passed": False,
@@ -70,7 +80,7 @@ def _check_phase(phase: str, gate: str, plan_rel: str) -> dict[str, Any]:
     return {
         "phase": phase,
         "gate": gate,
-        "plan_file": plan_rel,
+        "plan_file": resolved_rel,
         "exists": True,
         "gate_status": gate_status,
         "passed": gate_status == "passed",
@@ -81,7 +91,7 @@ def _check_phase(phase: str, gate: str, plan_rel: str) -> dict[str, Any]:
 
 
 def build_matrix() -> dict[str, Any]:
-    rows = [_check_phase(p, g, r) for p, g, r in PHASES]
+    rows = [_check_phase(p, g, rel, task_id) for p, g, rel, task_id in PHASES]
     summary = {
         "phases_total": len(rows),
         "phases_passed": sum(1 for r in rows if r["passed"]),
@@ -93,9 +103,8 @@ def build_matrix() -> dict[str, Any]:
 def write_audit(payload: dict[str, Any]) -> tuple[Path, Path]:
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     out_dir = ROOT / ".omo" / "_delivery" / "phase-gate"
-    out_dir.mkdir(parents=True, exist_ok=True)
     json_path = out_dir / f"{today}.json"
-    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(json_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
     md_path = out_dir / f"{today}.md"
     lines = [f"# Phase Gate Matrix — {today}", "", f"Generated: {payload['generated_at']}", ""]
     lines.append("## Summary")
@@ -110,7 +119,7 @@ def write_audit(payload: dict[str, Any]) -> tuple[Path, Path]:
             f"| {r['phase']} | {r['gate']} | {r['gate_status']} | "
             f"{r['sub_gate_passed']}/{r['sub_gate_count']} passed, {r['sub_gate_open']} open |"
         )
-    md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_text_atomic(md_path, "\n".join(lines) + "\n")
     return json_path, md_path
 
 

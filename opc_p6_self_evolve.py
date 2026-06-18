@@ -18,6 +18,9 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
 
 
 def _now_iso() -> str:
@@ -144,7 +147,6 @@ def write_planned_tasks(tasks: list[dict[str, Any]]) -> list[Path]:
     返回落盘路径列表.
     """
     out_dir = ROOT / ".omo" / "tasks" / "planned"
-    out_dir.mkdir(parents=True, exist_ok=True)
     paths: list[Path] = []
     ts = _now_iso()
     for t in tasks:
@@ -173,7 +175,7 @@ def write_planned_tasks(tasks: list[dict[str, Any]]) -> list[Path]:
             body += f"last_run_at: \"{t['last_run_at']}\"\n"
         if t.get("latest_week"):
             body += f"latest_week: {t['latest_week']!r}\n"
-        out.write_text(body, encoding="utf-8")
+        write_text_atomic(out, body)
         paths.append(out)
     return paths
 
@@ -190,9 +192,8 @@ def main() -> int:
         "paths": [str(p.relative_to(ROOT)) for p in paths],
     }
     out_dir = ROOT / ".omo" / "_control" / "evolution" / "self-evolve"
-    out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{_now_iso()[:10]}.json"
-    out_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(out_path, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     print(f"# wrote: {out_path}", file=sys.stderr)

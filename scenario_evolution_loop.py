@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import sys
-import yaml
 from pathlib import Path
 from datetime import UTC, datetime
 
@@ -18,17 +17,17 @@ sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
 
 def run_experiment():
     import logging
+    from omo.omo_ingress import remove_debt_item, upsert_debt_item
+    
     logging.basicConfig(level=logging.INFO)
     print("🧪 Starting Scenario Experiment 4: The Evolution Loop")
     
     os.environ["WORKSPACE"] = str(ROOT)
     print(f"🏠 Workspace Root: {ROOT}")
-    debt_dir = ROOT / ".omo" / "debt" / "items"
-    debt_dir.mkdir(parents=True, exist_ok=True)
+    omo_dir = ROOT / ".omo"
     
     # 1. Create a fake Budget Exhausted debt
     debt_id = f"DEBT-EVOLUTION-TEST-{datetime.now(UTC).strftime('%H%M%S')}"
-    debt_path = debt_dir / f"{debt_id}.yaml"
     
     debt_payload = {
         "id": debt_id,
@@ -39,7 +38,12 @@ def run_experiment():
         "registered_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     }
     
-    debt_path.write_text(yaml.safe_dump(debt_payload))
+    upsert_debt_item(
+        omo_dir,
+        debt_data=debt_payload,
+        ingress_plane="scripts/scenario_evolution_loop.py",
+        source_ref=f"scenario:evolution:{debt_id}",
+    )
     print(f"📄 Created test debt: {debt_id}")
 
     # 2. Run Evolution Loop (Single Pass)
@@ -52,8 +56,12 @@ def run_experiment():
     # 3. Verify
     if triggered > 0:
         print(f"✅ SUCCESS: Evolution Loop detected and triggered {triggered} remediation(s).")
-        # Cleanup
-        debt_path.unlink()
+        remove_debt_item(
+            omo_dir,
+            debt_id=debt_id,
+            actor="scripts/scenario_evolution_loop.py",
+            source_ref=f"scenario:evolution:{debt_id}",
+        )
         return True
     else:
         print("❌ FAILURE: Evolution Loop failed to detect the test debt.")

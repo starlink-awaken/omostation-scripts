@@ -19,6 +19,7 @@ if str(OMO_SRC) not in sys.path:
     sys.path.insert(0, str(OMO_SRC))
 
 from omo.omo_handoff_index import write_handoff_index  # noqa: E402
+from omo.omo_io import ensure_parent_dir  # noqa: E402
 from omo.omo_metrics import write_worker_utilization_summary  # noqa: E402
 from omo.omo_worker_dispatch import dispatch_task  # noqa: E402
 from omo.omo_worker_status import scan_runtime_watchdog, update_dispatch_checkpoint  # noqa: E402
@@ -323,8 +324,12 @@ def _generate_success_demo(demo_root: Path) -> dict[str, Any]:
     parent_payload["completion_summary"] = (
         "Three-role thin-binding demo succeeded with planner, researcher, and reviewer."
     )
-    _write_yaml(demo_root / ".omo" / "tasks" / "done" / parent_path.name, parent_payload)
-    parent_path.unlink()
+    completed_parent_path = demo_root / ".omo" / "tasks" / "done" / parent_path.name
+    _write_yaml(completed_parent_path, parent_payload)
+    if parent_path.exists():
+        archived_parent_path = demo_root / ".omo" / "_archive" / parent_path.name
+        ensure_parent_dir(archived_parent_path)
+        shutil.move(str(parent_path), str(archived_parent_path))
 
     handoff_indexes = {
         task_id: write_handoff_index(demo_root, task_id)

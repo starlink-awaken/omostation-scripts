@@ -9,11 +9,16 @@ plot-metrics.py — 治理债指标趋势图 (纯 ASCII, 无外部依赖)
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(WORKSPACE_ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
 
 # ── 路径配置 ──────────────────────────────────────────────
-AUDIT_DIR = Path("/Users/xiamingxing/Workspace/.omo/_delivery/audit-rollout")
+AUDIT_DIR = WORKSPACE_ROOT / ".omo" / "_delivery" / "audit-rollout"
 OUTPUT_FILE = AUDIT_DIR / "metrics-trend.txt"
 
 # 健康等级映射 R0-R5 → 数值
@@ -128,7 +133,7 @@ def main() -> None:
         out("  (目录 .omo/_delivery/audit-rollout/ 中尚无 <date>.json 文件)")
         out("  预期格式: <YYYY-MM-DD>-metrics.json 或 <YYYY-MM-DD>.json")
         out("  必需字段: drift_count, debt_density, health_grade")
-        OUTPUT_FILE.write_text(buf.getvalue(), encoding="utf-8")
+        write_text_atomic(OUTPUT_FILE, buf.getvalue())
         print(buf.getvalue())
         return
 
@@ -193,7 +198,7 @@ def main() -> None:
     out(f"\n  输出文件: {OUTPUT_FILE}")
 
     content = buf.getvalue()
-    OUTPUT_FILE.write_text(content, encoding="utf-8")
+    write_text_atomic(OUTPUT_FILE, content)
     print(content)
 
 

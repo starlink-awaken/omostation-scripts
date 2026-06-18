@@ -20,6 +20,9 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
 
 
 def _now_iso() -> str:
@@ -107,8 +110,7 @@ def _update_release_index(cycle: dict[str, Any]) -> dict[str, Any]:
         "max_interval_days": max(cadence_intervals) if cadence_intervals else None,
     }
     path = _release_index_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(path, json.dumps(index, ensure_ascii=False, indent=2) + "\n")
     return index
 
 
@@ -203,7 +205,6 @@ def _gather_debt() -> dict[str, Any]:
 def write_release_notes(version: str, cycle: dict[str, Any]) -> Path:
     """写 release notes (含 summary/validation/debt 三件套)."""
     notes_path = ROOT / ".omo" / "_delivery" / "release" / "CHANGELOG.md"
-    notes_path.parent.mkdir(parents=True, exist_ok=True)
     changes = cycle["changes"]
     validation = cycle["validation"]
     debt = cycle["debt"]
@@ -228,24 +229,20 @@ def write_release_notes(version: str, cycle: dict[str, Any]) -> Path:
         summary += f"- {c}\n"
     summary += "\n"
 
-    if not notes_path.exists():
-        notes_path.write_text("# OPC Release Notes\n\n", encoding="utf-8")
-    with notes_path.open("a", encoding="utf-8") as f:
-        f.write(summary)
+    existing = notes_path.read_text(encoding="utf-8") if notes_path.exists() else "# OPC Release Notes\n\n"
+    write_text_atomic(notes_path, existing + summary)
     return notes_path
 
 
 def write_cycle_json(version: str, cycle: dict[str, Any]) -> Path:
     out_dir = ROOT / ".omo" / "_delivery" / "release"
-    out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{version}.json"
-    out_path.write_text(json.dumps(cycle, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(out_path, json.dumps(cycle, ensure_ascii=False, indent=2) + "\n")
     return out_path
 
 
 def write_retrospective(version: str, cycle: dict[str, Any]) -> Path:
     retro_dir = ROOT / ".omo" / "tasks" / "registry" / "done" / "OPC-P7-H1"
-    retro_dir.mkdir(parents=True, exist_ok=True)
     retro_path = retro_dir / f"retrospective-{version}.md"
     lines: list[str] = []
     lines.append(f"# OPC P7-H1 retrospective — {version}")
@@ -279,7 +276,7 @@ def write_retrospective(version: str, cycle: dict[str, Any]) -> Path:
     lines.append("- 下一周继续 release cycle")
     lines.append("- 若 drift > 0 触发 self-evolve register")
     lines.append("- H2/H3/H4/H5 同步推进")
-    retro_path.write_text("\n".join(lines), encoding="utf-8")
+    write_text_atomic(retro_path, "\n".join(lines))
     return retro_path
 
 

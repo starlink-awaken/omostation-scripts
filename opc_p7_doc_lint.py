@@ -23,6 +23,10 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
+from omo.opc_phase_paths import resolve_opc_phase_task_path
 
 
 KEY_DOCS = [
@@ -36,10 +40,10 @@ KEY_DOCS = [
 
 
 PHASE_PLAN_DOCS = [
-    ("P4", ".omo/tasks/planned/OPC-P4-MODEL-COMPUTE.yaml", "docs/OPC-PHASE4-MODEL-COMPUTE.md"),
-    ("P5", ".omo/tasks/planned/OPC-P5-SCENARIOS.yaml", "docs/OPC-PHASE5-SCENARIOS.md"),
-    ("P6", ".omo/tasks/planned/OPC-P6-EVOLUTION-LOOP.yaml", "docs/OPC-PHASE6-EVOLUTION-LOOP.md"),
-    ("P7", ".omo/tasks/planned/OPC-P7-RELEASE-TRAIN.yaml", "docs/OPC-PHASE7-RELEASE-TRAIN.md"),
+    ("P4", "OPC-P4-MODEL-COMPUTE", "docs/OPC-PHASE4-MODEL-COMPUTE.md"),
+    ("P5", "OPC-P5", "docs/OPC-PHASE5-SCENARIOS.md"),
+    ("P6", "OPC-P6", "docs/OPC-PHASE6-EVOLUTION-LOOP.md"),
+    ("P7", "OPC-P7", "docs/OPC-PHASE7-RELEASE-TRAIN.md"),
 ]
 
 
@@ -79,8 +83,7 @@ def _update_doc_lint_index(findings: dict[str, Any]) -> dict[str, Any]:
         "latest_drift_total": index["runs"][-1]["drift_total"] if index["runs"] else None,
     }
     path = _doc_lint_index_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(path, json.dumps(index, ensure_ascii=False, indent=2) + "\n")
     return index
 
 
@@ -116,8 +119,9 @@ def check_phase_doc_consistency() -> list[dict[str, Any]]:
     import yaml
 
     findings: list[dict[str, Any]] = []
-    for phase, plan_rel, doc_rel in PHASE_PLAN_DOCS:
+    for phase, task_id, doc_rel in PHASE_PLAN_DOCS:
         try:
+            plan_rel = str(resolve_opc_phase_task_path(ROOT, task_id).relative_to(ROOT))
             plan = _read_yaml(plan_rel)
             doc = _read(doc_rel)
         except FileNotFoundError:
@@ -179,8 +183,9 @@ def check_term_consistency() -> list[dict[str, Any]]:
     描述段中的 'not_yet_passed' (那些是有意保留的对照说明).
     """
     issues: list[dict[str, Any]] = []
-    for phase, plan_rel, doc_rel in PHASE_PLAN_DOCS:
+    for phase, task_id, doc_rel in PHASE_PLAN_DOCS:
         try:
+            plan_rel = str(resolve_opc_phase_task_path(ROOT, task_id).relative_to(ROOT))
             plan = _read_yaml(plan_rel)
             doc = _read(doc_rel)
         except FileNotFoundError:
@@ -221,10 +226,9 @@ def main() -> int:
     findings["history"] = _update_doc_lint_index(findings)
 
     out_dir = ROOT / ".omo" / "_delivery" / "doc-lint"
-    out_dir.mkdir(parents=True, exist_ok=True)
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     json_path = out_dir / f"{today}.json"
-    json_path.write_text(json.dumps(findings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(json_path, json.dumps(findings, ensure_ascii=False, indent=2) + "\n")
     md_path = out_dir / f"{today}.md"
     lines = [f"# OPC Doc Lint — {today}", "", f"Drift total: **{total_drift}**", ""]
     lines.append("## Key docs presence")
@@ -255,7 +259,7 @@ def main() -> int:
     lines.append("## History")
     lines.append(f"- run_count: {findings['history']['summary']['run_count']}")
     lines.append(f"- latest_drift_total: {findings['history']['summary']['latest_drift_total']}")
-    md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_text_atomic(md_path, "\n".join(lines) + "\n")
     print(f"# json: {json_path.relative_to(ROOT)}", file=sys.stderr)
     print(f"# md:   {md_path.relative_to(ROOT)}", file=sys.stderr)
     print(f"# drift_total: {total_drift}", file=sys.stderr)

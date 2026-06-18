@@ -17,6 +17,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "projects" / "agora" / "src"))
 sys.path.insert(0, str(ROOT / "projects" / "cockpit" / "web"))
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
 
 async def verify_truth():
     print("🔍 Starting Truth Verification Action (v3)...")
@@ -54,7 +57,8 @@ async def verify_truth():
     print("\n[3] Verifying HITL Real Side-effects...")
     from app import _execute_mutation
     patch_file = ROOT / ".omo" / "state" / "budget_overrides.jsonl"
-    if patch_file.exists(): patch_file.unlink()
+    if patch_file.exists():
+        write_text_atomic(patch_file, "")
     await _execute_mutation({"id":"P1","type":"budget_increase","debt_id":"D1"})
     if patch_file.exists():
         print(f"   ✅ SUCCESS: Mutation wrote to {patch_file.name}")

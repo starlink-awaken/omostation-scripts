@@ -48,6 +48,9 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import ensure_parent_dir, write_text_atomic
 
 
 REPOS = [
@@ -82,8 +85,8 @@ def _run_primary_audit_rollout(mode: str) -> dict[str, Any]:
     for name, rel in REPOS:
         repos_args += ["--repos", f"{name}:{rel}"]
     out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
-    out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{_today()}-{mode}.json"
+    ensure_parent_dir(out_path)
 
     cmd = [
         "python3",
@@ -221,7 +224,6 @@ def _run_audit_rollout(mode: str) -> dict[str, Any]:
 
 def _write_drift_history(mode: str, rollout: dict[str, Any]) -> Path:
     out_dir = ROOT / ".omo" / "_control" / "evolution" / "drift-history"
-    out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{_today()}.json"
     summary = {
         "generated_at": _now_iso(),
@@ -243,7 +245,7 @@ def _write_drift_history(mode: str, rollout: dict[str, Any]) -> Path:
             }
             for name, data in repos.items()
         }
-    out_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(out_path, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     return out_path
 
 
@@ -270,7 +272,7 @@ def _update_history_index(mode: str, rollout: dict[str, Any], history_path: Path
     锁文件路径: index_path + ".lock" (与 index 同目录, 不污染 .omo 状态)
     """
     path = _history_index_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     lock_path = path.with_suffix(".lock")
     lock_handle = open(lock_path, "w", encoding="utf-8")
     try:
@@ -321,7 +323,7 @@ def _update_history_index(mode: str, rollout: dict[str, Any], history_path: Path
                 "latest_trigger_source": runs[-1]["trigger_source"] if runs else None,
             }
             # 写回 (在锁内, 原子 write 对其他进程不可见中间态)
-            path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            write_text_atomic(path, json.dumps(index, ensure_ascii=False, indent=2) + "\n")
         finally:
             fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
     finally:
@@ -349,7 +351,7 @@ def main() -> int:
     }
     out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
     summary_path = out_dir / f"{_today()}-{mode}-daemon-summary.json"
-    summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(summary_path, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     print(f"# mode: {mode}", file=sys.stderr)
     print(f"# trigger_source: {_trigger_source()}", file=sys.stderr)
     print(f"# rollout rc: {rollout.get('returncode')}", file=sys.stderr)

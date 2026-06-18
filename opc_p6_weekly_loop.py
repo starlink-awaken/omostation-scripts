@@ -19,6 +19,9 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+
+from omo.omo_io import write_text_atomic
 
 
 def _now_iso() -> str:
@@ -101,8 +104,7 @@ def _update_loop_history(payload: dict[str, Any]) -> dict[str, Any]:
         "latest_week": runs[-1]["week"] if runs else None,
     }
     path = _loop_history_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(history, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(path, json.dumps(history, ensure_ascii=False, indent=2) + "\n")
     return history
 
 
@@ -342,19 +344,16 @@ def _update_trace_index(payload: dict[str, Any], weekly_md_path: Path, weekly_js
         "latest_week": weeks[-1]["week"] if weeks else None,
         "latest_radar_archive_path": weeks[-1]["radar_archive_path"] if weeks else None,
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(path, json.dumps(index, ensure_ascii=False, indent=2) + "\n")
     return index
 
 
 def write_evidence(week: str, payload: dict[str, Any]) -> Path:
     """落盘 evidence: JSON + markdown."""
     out_dir = ROOT / ".omo" / "_control" / "evolution" / "loop"
-    out_dir.mkdir(parents=True, exist_ok=True)
     json_path = out_dir / f"{week}.json"
-    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_atomic(json_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
     md_dir = ROOT / ".omo" / "tasks" / "registry" / "done" / "OPC-P6-G1"
-    md_dir.mkdir(parents=True, exist_ok=True)
     md_path = md_dir / f"weekly-{week}.md"
     _write_weekly_markdown(md_path, payload)
     _update_trace_index(payload, md_path, json_path)
@@ -422,7 +421,7 @@ def _write_weekly_markdown(md_path: Path, payload: dict[str, Any]) -> None:
     lines.append("---")
     lines.append("loop runner: scripts/opc_p6_weekly_loop.py")
     lines.append("drift detector: scripts/opc_p6_drift_detector.py")
-    md_path.write_text("\n".join(lines), encoding="utf-8")
+    write_text_atomic(md_path, "\n".join(lines))
 
 
 def main() -> int:
@@ -441,7 +440,6 @@ def _run_mof_state_bridge_cron() -> None:
     """P6 增强: weekly loop 跑完后跑 mof-state-bridge --strict 写 5repos 兼容字段."""
     import subprocess
     out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
-    out_dir.mkdir(parents=True, exist_ok=True)
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     result = subprocess.run(
@@ -479,9 +477,9 @@ def _run_mof_state_bridge_cron() -> None:
             "blocking": not in_sync,
         },
     }
-    (out_dir / f"{today}-mof-state-bridge.json").write_text(
+    write_text_atomic(
+        out_dir / f"{today}-mof-state-bridge.json",
         json.dumps(payload_out, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
     )
     if not in_sync:
         print(f"⚠️  mof-state-bridge 失同步: {m1_only} M1 only, written to 5repos", file=sys.stderr)
