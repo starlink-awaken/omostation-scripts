@@ -94,8 +94,20 @@ def _current_goal_task_ids(goals_data: dict) -> set[str]:
     return goal_task_ids
 
 
-def _goal_divergence_flags(omo_dir: Path, goals_data: dict, task_ids: set[str]) -> tuple[list[str], dict[str, dict[str, object]]]:
+def _goal_divergence_flags(
+    omo_dir: Path,
+    goals_data: dict,
+    task_ids: set[str],
+    done_task_ids: set[str] | None = None,
+) -> tuple[list[str], dict[str, dict[str, object]]]:
+    """Compute goal/task divergence flags.
+
+    P42 SSOT 同步纪元: 与 scripts/check-state-goals-alignment.py 对齐。
+    - 用 rglob 递归扫描 tasks/{active,blocked,done} 及其子目录
+    - done 任务不算 orphaned (历史归档不影响当前对齐)
+    """
     goal_task_ids = _current_goal_task_ids(goals_data)
+    done_task_ids = done_task_ids or set()
 
     flags: list[str] = []
     detail_refs: dict[str, dict[str, object]] = {}
@@ -110,7 +122,8 @@ def _goal_divergence_flags(omo_dir: Path, goals_data: dict, task_ids: set[str]) 
                 {"count": len(missing), "task_ids": missing},
             ),
         }
-    orphaned = sorted(task_ids - goal_task_ids)
+    # Done tasks 是历史归档, 不算 orphaned
+    orphaned = sorted((task_ids - done_task_ids) - goal_task_ids)
     if orphaned:
         flags.append(f"orphaned_tasks:{len(orphaned)}")
         detail_refs["orphaned_tasks"] = {
@@ -385,8 +398,10 @@ def sync_state(
     debt_items = None
     debt_generated_ref_flags: list[str] = []
     debt_generated_ref_detail_refs: dict[str, dict[str, object]] = {}
+    done_task_ids: set[str] = set()
     for group in ("active", "blocked", "done"):
-        for task_file in (tasks_dir / group).glob("*.yaml"):
+        # rglob 递归, 命中 p43/ 等子目录的归档副本
+        for task_file in (tasks_dir / group).rglob("*.yaml"):
             task = _load_yaml(task_file)
             task_id = task.get("id")
             if task_id:
@@ -396,11 +411,13 @@ def sync_state(
                 if task_phase is None and task_id not in current_goal_task_ids:
                     continue
                 task_ids.add(task_id)
+                if group == "done":
+                    done_task_ids.add(task_id)
     if ledger_registry.exists():
         ledger = load_debt_ledger(omo_dir)
         debt_generated_ref_flags, debt_generated_ref_detail_refs = _debt_generated_ref_flags(omo_dir, ledger)
 
-    goal_divergence_flags, divergence_detail_refs = _goal_divergence_flags(omo_dir, goals, task_ids)
+    goal_divergence_flags, divergence_detail_refs = _goal_divergence_flags(omo_dir, goals, task_ids, done_task_ids=done_task_ids)
     stale_dispatch_flags, stale_dispatch_refs = _stale_dispatch_flags(omo_dir, current_time)
     dangling_reference_flags, dangling_reference_refs = _dangling_reference_flags(omo_dir)
     divergence_flags = (
