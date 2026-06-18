@@ -26,7 +26,7 @@ echo ""
 
 # 1. 债务优先级分布
 echo "1. 债务优先级分布"
-DEBT_ITEMS=$(find "$OMO_DIR/debt/items" -name "*.yaml" 2>/dev/null | wc -l | tr -d ' ')
+DEBT_ITEMS=$(grep -L "status: closed" "$OMO_DIR/debt/items/"*.yaml 2>/dev/null | wc -l | tr -d ' ')  # 数 open 债务 (closed 已解决不计; 之前 find 数全部含 closed → 虚高)
 if [ "$DEBT_ITEMS" -eq 0 ]; then
     pass "无未解决债务"
 else
