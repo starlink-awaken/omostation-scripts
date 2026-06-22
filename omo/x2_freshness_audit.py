@@ -30,9 +30,18 @@ TRUTH_DIR = OMO_DIR / "_truth"
 DELIVERY_DIR = OMO_DIR / "_delivery" / "freshness-audit"
 
 
+def _resolve_truth_dir():
+    """运行时解析 TRUTH_DIR (允许测试 monkeypatch OMO_DIR)"""
+    return OMO_DIR / "_truth"
+
+
+def _resolve_debt_dir():
+    return OMO_DIR / "debt" / "items"
+
+
 def check_debt_evidence() -> dict:
     """X2-FRESH-DEBT-EVIDENCE-INTEGRITY — 14 天巡检"""
-    debt_dir = OMO_DIR / "debt" / "items"
+    debt_dir = _resolve_debt_dir()
     if not debt_dir.exists():
         return {"rule_id": "X2-FRESH-DEBT-EVIDENCE-INTEGRITY", "status": "ok",
                 "stale": 0, "total": 0, "details": "no debt items"}
@@ -70,18 +79,39 @@ def check_cross_project_lint() -> dict:
     subprojects = ["kairon", "cockpit", "runtime", "omo", "metaos", "aetherforge", "c2g", "ecos"]
     stale = []
     for proj in subprojects:
-        proj_dir = WORKSPACE_ROOT / "projects" / proj / "src" / proj
-        if not proj_dir.exists():
+        proj_root = WORKSPACE_ROOT / "projects" / proj
+        proj_src = proj_root / "src" / proj
+        paths_to_check: list[str] = []
+        if proj_src.exists():
+            paths_to_check.append(str(proj_src))
+        # monorepo 布局: kairon/ecos/aetherforge 同时有 packages/ 子项目
+        extra = proj_root / "packages"
+        if extra.exists():
+            for pkg_dir in extra.iterdir():
+                if pkg_dir.is_dir() and (pkg_dir / "pyproject.toml").exists():
+                    paths_to_check.append(str(pkg_dir))
+        # _legacy/ 是已归档代码 (llm-gateway → aetherforge), 跳过
+        exclude_args: list[str] = []
+        if (proj_root / "packages" / "gateway" / "src" / "llm_gateway" / "_legacy").exists():
+            exclude_args.append("--exclude=packages/gateway/src/llm_gateway/_legacy")
+        if not paths_to_check:
             continue
         try:
             result = subprocess.run(
-                ["uv", "run", "ruff", "check", "src/", "--statistics"],
-                cwd=str(WORKSPACE_ROOT / "projects" / proj),
-                capture_output=True, text=True, timeout=90,
+                ["uv", "run", "ruff", "check", *paths_to_check, "--statistics", *exclude_args],
+                cwd=str(proj_root),
+                capture_output=True, text=True, timeout=120,
             )
             output = result.stdout + result.stderr
             import re
-            m = re.search(r"Found\s+(\d+)\s+errors?", output)
+            # E902 (No such file or directory) 当 paths_to_check 包含不存在的目录时触发,
+            # 这些不算真实 lint 错误. 解析时跳过 E902 行.
+            filtered_output = "\n".join(
+                line for line in output.splitlines()
+                if not re.match(r"^\s*E902\b", line)
+                and "Failed to lint" not in line
+            )
+            m = re.search(r"Found\s+(\d+)\s+errors?", filtered_output)
             errors = int(m.group(1)) if m else 0
             if errors > 0:
                 stale.append({"project": proj, "errors": errors})
@@ -96,7 +126,7 @@ def check_cross_project_lint() -> dict:
 
 def check_mof_version_bump() -> dict:
     """X2-FRESH-MOF-VERSION-BUMP — 30 天巡检"""
-    version_file = TRUTH_DIR / "mof-version.yaml"
+    version_file = _resolve_truth_dir() / "mof-version.yaml"
     if not version_file.exists():
         return {"rule_id": "X2-FRESH-MOF-VERSION-BUMP", "status": "warning",
                 "stale": 1, "total": 0, "details": "mof-version.yaml missing"}
