@@ -99,6 +99,16 @@ if [ "$INCLUDE_TREND" = true ]; then
     else
         python3 bin/governance-readiness-trend.py
     fi
+    # P67 增: alert-aggregator 评估 (--notify 模式)
+    if [ -f .omo/_log/readiness-alerts.jsonl ]; then
+        echo ""
+        echo "--- [2.6/3] alert-aggregator ---"
+        if [ "$DRY_RUN" = false ]; then
+            python3 bin/alert-aggregator.py 2>&1 | tee -a "$LOG_FILE"
+        else
+            python3 bin/alert-aggregator.py
+        fi
+    fi
 fi
 
 # 3. 健康度评估
