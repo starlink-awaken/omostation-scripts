@@ -185,11 +185,28 @@ echo "✅ 自治治理代理正常, 退出码 0" | tee -a "$LOG_FILE"
 # P72: 自治运行产生的 drift/audit/log 必须立即 commit, 避免 dirty 竞争
 COMMITTED=false
 if [ "$DRY_RUN" = false ]; then
-    if [ -n "$(git status --porcelain)" ]; then
+    if [ -n "$(git status --porcelain)" ] || git submodule status | grep -q '^+'; then
         echo "--- [P72] auto-committing agent outputs ---" | tee -a "$LOG_FILE"
-        # 子模块先提交
-        git submodule foreach --quiet 'git add -A 2>/dev/null; git diff --cached --quiet || git commit -m "chore(agent): auto-commit governance-agent outputs" 2>/dev/null' || true
-        # 根仓库提交
+
+        # 1. 子模块先提交 (只处理有变更的子模块)
+        git submodule --quiet foreach '
+            if [ -n "$(git status --porcelain)" ]; then
+                git add -A 2>/dev/null
+                if ! git diff --cached --quiet; then
+                    git commit -m "chore(agent): auto-commit governance-agent outputs" 2>/dev/null || true
+                fi
+            fi
+        ' || true
+
+        # 2. 更新根仓库子模块指针 (包括 + 前缀的落后指针)
+        # git submodule foreach 在子模块目录内运行, 提供 $name $path $toplevel
+        git submodule --quiet foreach '
+            git rev-parse HEAD >/dev/null 2>&1 && (
+                cd "$toplevel" && git add "$path" 2>/dev/null || true
+            )
+        ' || true
+
+        # 3. 根仓库文件提交
         git add -A 2>/dev/null
         if ! git diff --cached --quiet; then
             git commit -m "chore(agent): governance-agent auto-commit ($TIMESTAMP)" 2>&1 | tee -a "$LOG_FILE" || true
