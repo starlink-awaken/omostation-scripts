@@ -48,6 +48,16 @@ fi
 
 cd "$WORKSPACE_ROOT" || { echo "FATAL: cd $WORKSPACE_ROOT failed"; exit 2; }
 
+# P72: emit mutation intent before any .omo/ writes
+RUN_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
+if command -v omo >/dev/null 2>&1; then
+    omo event emit \
+        --type agent_mutation_intent \
+        --source governance-agent \
+        --payload "{\"run_id\":\"$RUN_ID\",\"trigger\":\"cron\",\"planned_surfaces\":[\".omo/_log\",\".omo/_control/evolution/drift\",\".omo/_knowledge\"]}" \
+        2>/dev/null || true
+fi
+
 # dry-run 跳过 tee 到日志
 if [ "$DRY_RUN" = true ]; then
     exec > >(cat) 2>&1
@@ -171,4 +181,30 @@ fi
 
 echo "" | tee -a "$LOG_FILE"
 echo "✅ 自治治理代理正常, 退出码 0" | tee -a "$LOG_FILE"
+
+# P72: 自治运行产生的 drift/audit/log 必须立即 commit, 避免 dirty 竞争
+COMMITTED=false
+if [ "$DRY_RUN" = false ]; then
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "--- [P72] auto-committing agent outputs ---" | tee -a "$LOG_FILE"
+        # 子模块先提交
+        git submodule foreach --quiet 'git add -A 2>/dev/null; git diff --cached --quiet || git commit -m "chore(agent): auto-commit governance-agent outputs" 2>/dev/null' || true
+        # 根仓库提交
+        git add -A 2>/dev/null
+        if ! git diff --cached --quiet; then
+            git commit -m "chore(agent): governance-agent auto-commit ($TIMESTAMP)" 2>&1 | tee -a "$LOG_FILE" || true
+            COMMITTED=true
+        fi
+    fi
+fi
+
+if command -v omo >/dev/null 2>&1; then
+    COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "")
+    omo event emit \
+        --type agent_mutation_complete \
+        --source governance-agent \
+        --payload "{\"run_id\":\"$RUN_ID\",\"committed\":$COMMITTED,\"commit_sha\":\"$COMMIT_SHA\"}" \
+        2>/dev/null || true
+fi
+
 exit 0
