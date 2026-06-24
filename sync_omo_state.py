@@ -522,7 +522,10 @@ def sync_state(
     xplane_factor = xplane_factor or 1.0  # NaN/None 终极兜底,保证 health 公式总有合法值
     state["health_score_raw"] = raw_health
     state["debt_weight"] = dw
-    state["health_score"] = round(raw_health * dw * xplane_factor, 2)
+    state["xplane_factor"] = xplane_factor
+    # SSOT: health_score 的权威写入者是 bin/compass_radar.py (基于 anomalies).
+    # sync_omo_state 只提供债务/X-Plane 调整后的参考值,避免覆盖权威健康分.
+    state["debt_adjusted_health_score"] = round(raw_health * dw * xplane_factor, 2)
     if ledger and metrics:
         state["debt_registry_ref"] = ledger.registry_ref
         state["debt_dashboard_ref"] = ledger.dashboard_ref
