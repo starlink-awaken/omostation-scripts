@@ -109,6 +109,14 @@ if [ "$INCLUDE_TREND" = true ]; then
             python3 bin/alert-aggregator.py
         fi
     fi
+    # P71 增: alert-history 步骤 (7d 趋势)
+    echo ""
+    echo "--- [2.7/3] alert-history ---"
+    if [ "$DRY_RUN" = false ]; then
+        python3 bin/alert-history.py 2>&1 | tee -a "$LOG_FILE"
+    else
+        python3 bin/alert-history.py
+    fi
 fi
 
 # 3. 健康度评估
