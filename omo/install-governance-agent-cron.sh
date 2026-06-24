@@ -1,0 +1,51 @@
+#!/bin/bash
+# P62 governance-agent cron 安装/卸载/状态脚本
+#
+# 用法:
+#   ./install-governance-agent-cron.sh           # 安装 (默认)
+#   ./install-governance-agent-cron.sh --uninstall
+#   ./install-governance-agent-cron.sh --status
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WRAPPER="$SCRIPT_DIR/governance-agent.sh"
+CRON_LINE="0 */6 * * * $WRAPPER >> ${WORKSPACE_ROOT:-/Users/xiamingxing/Workspace}/.omo/_log/governance-agent-cron.log 2>&1"
+CRON_TAG="# P61 governance-agent-cron"
+
+case "${1:-install}" in
+    install)
+        # 移除旧 cron 行 (避免重复)
+        (crontab -l 2>/dev/null | grep -v "$CRON_TAG" || true) > /tmp/cron.tmp
+        echo "$CRON_LINE" >> /tmp/cron.tmp
+        echo "$CRON_TAG" >> /tmp/cron.tmp
+        crontab /tmp/cron.tmp
+        rm /tmp/cron.tmp
+        echo "✅ governance-agent cron 已安装: 每 6h 跑"
+        echo "   cron line: $CRON_LINE"
+        ;;
+    --uninstall|uninstall)
+        (crontab -l 2>/dev/null | grep -v "$CRON_TAG" | grep -v "$WRAPPER" || true) > /tmp/cron.tmp
+        crontab /tmp/cron.tmp
+        rm /tmp/cron.tmp
+        echo "✅ governance-agent cron 已卸载"
+        ;;
+    --status|status)
+        echo "=== governance-agent cron 状态 ==="
+        if crontab -l 2>/dev/null | grep -q "$WRAPPER"; then
+            echo "✅ 已安装"
+            crontab -l 2>/dev/null | grep "$WRAPPER" | head -3
+        else
+            echo "❌ 未安装"
+        fi
+        echo ""
+        echo "=== 最近 5 次运行 ==="
+        if [ -d "${WORKSPACE_ROOT:-/Users/xiamingxing/Workspace}/.omo/_log" ]; then
+            ls -lt "${WORKSPACE_ROOT:-/Users/xiamingxing/Workspace}/.omo/_log"/governance-agent-*.log 2>/dev/null | head -5
+        fi
+        ;;
+    *)
+        echo "用法: $0 [install|--uninstall|--status]"
+        exit 1
+        ;;
+esac
