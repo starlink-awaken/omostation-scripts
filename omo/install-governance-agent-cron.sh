@@ -5,6 +5,7 @@
 #   ./install-governance-agent-cron.sh           # 安装 (默认)
 #   ./install-governance-agent-cron.sh --uninstall
 #   ./install-governance-agent-cron.sh --status
+#   ./install-governance-agent-cron.sh --test      # P73: 跑 1 次 dry-run 验证
 
 set -e
 
@@ -29,6 +30,15 @@ case "${1:-install}" in
         crontab /tmp/cron.tmp
         rm /tmp/cron.tmp
         echo "✅ governance-agent cron 已卸载"
+        ;;
+    --test|test)
+        # P73 增: --test 模式跑 1 次 dry-run 验证
+        echo "=== governance-agent --test 模式 (dry-run) ==="
+        echo "将执行: $WRAPPER --include-trend --dry-run"
+        echo ""
+        "$WRAPPER" --include-trend --dry-run
+        echo ""
+        echo "✅ --test 完成 (未修改 crontab, 未写 alert log)"
         ;;
     --status|status)
         echo "=== governance-agent cron 状态 ==="
