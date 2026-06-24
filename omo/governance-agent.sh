@@ -127,6 +127,14 @@ if [ "$INCLUDE_TREND" = true ]; then
     else
         python3 bin/alert-history.py
     fi
+    # P72 增: dim-weight 维度权重动态评估 (7 步)
+    echo ""
+    echo "--- [2.8/3] dim-weight ---"
+    if [ "$DRY_RUN" = false ]; then
+        python3 bin/dim-weight.py 2>&1 | tee -a "$LOG_FILE"
+    else
+        python3 bin/dim-weight.py
+    fi
 fi
 
 # 3. 健康度评估
