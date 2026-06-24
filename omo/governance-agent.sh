@@ -115,6 +115,35 @@ if [ "$INCLUDE_TREND" = true ]; then
         echo "--- [2.6/3] alert-aggregator ---"
         if [ "$DRY_RUN" = false ]; then
             python3 bin/alert-aggregator.py 2>&1 | tee -a "$LOG_FILE"
+            # P73 增: P0 触发时调 mock 通知 (email/sms/slack)
+            # 检测最近 alert-notifications.jsonl 是否有 P0 且 1h 内未通知
+            LAST_P0=$(python3 -c "
+import json, sys
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+log = Path('.omo/_log/alert-notifications.jsonl')
+if not log.exists(): sys.exit(0)
+cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+try:
+    with open(log) as f:
+        for line in f:
+            rec = json.loads(line.strip())
+            if rec.get('level') == 'P0':
+                ts = rec.get('timestamp', '')
+                if ts and datetime.fromisoformat(ts.replace('Z', '+00:00')) >= cutoff:
+                    print(rec.get('level_reason', rec.get('by_type', {}).get('low_mean', 'P0 触发')))
+                    break
+except Exception:
+    pass
+" 2>/dev/null)
+            if [ -n "$LAST_P0" ]; then
+                echo ""
+                echo "🚨 P0 触发检测: $LAST_P0"
+                if [ "$DRY_RUN" = false ]; then
+                    python3 bin/alert-mock-p0-notify.py \
+                        --message "$LAST_P0" --all-channels 2>&1 | tee -a "$LOG_FILE"
+                fi
+            fi
         else
             python3 bin/alert-aggregator.py
         fi
