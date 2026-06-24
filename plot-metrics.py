@@ -16,6 +16,7 @@ WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WORKSPACE_ROOT / "projects" / "omo" / "src"))
 
 from omo.omo_io import write_text_atomic
+from omo.omo_metrics_plot import write_metrics_trend
 
 # ── 路径配置 ──────────────────────────────────────────────
 AUDIT_DIR = WORKSPACE_ROOT / ".omo" / "_delivery" / "audit-rollout"
@@ -133,7 +134,7 @@ def main() -> None:
         out("  (目录 .omo/_delivery/audit-rollout/ 中尚无 <date>.json 文件)")
         out("  预期格式: <YYYY-MM-DD>-metrics.json 或 <YYYY-MM-DD>.json")
         out("  必需字段: drift_count, debt_density, health_grade")
-        write_text_atomic(OUTPUT_FILE, buf.getvalue())
+        write_metrics_trend(WORKSPACE_ROOT, buf.getvalue())
         print(buf.getvalue())
         return
 
@@ -198,7 +199,7 @@ def main() -> None:
     out(f"\n  输出文件: {OUTPUT_FILE}")
 
     content = buf.getvalue()
-    write_text_atomic(OUTPUT_FILE, content)
+    write_metrics_trend(WORKSPACE_ROOT, content)
     print(content)
 
 

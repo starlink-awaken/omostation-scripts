@@ -89,16 +89,14 @@ else
 fi
 echo ""
 
-# 8. task consistency (0 in_progress 任务)
-echo "8. 0 in_progress 任务 (P37-W1 治理历史清仓)..."
-# 加 || true 绕开 set -o pipefail (grep -l 无匹配时返回 1)
-INPROG=$(grep -l "status: in_progress" "$WORKSPACE/.omo/tasks/planned/"*.yaml 2>/dev/null | wc -l | tr -d ' ' || true)
-if [ "$INPROG" -gt 0 ]; then
-    echo "Found $INPROG in_progress tasks (need cleanup)"
-    grep -l "status: in_progress" "$WORKSPACE/.omo/tasks/planned/"*.yaml 2>/dev/null
+# 8. planned queue consistency
+echo "8. planned queue 一致性 (只允许 candidate/pending)..."
+if ! python3 "$WORKSPACE/scripts/omo/omo_worker.py" task validate --all-planned >/tmp/omo-planned-validate.log 2>&1; then
+    echo "planned queue 校验失败"
+    cat /tmp/omo-planned-validate.log
     exit 1
 fi
-echo "0 in_progress 任务"
+echo "planned queue 一致"
 echo ""
 
 # 9. done 目录一致性

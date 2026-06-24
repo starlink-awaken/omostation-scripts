@@ -15,7 +15,11 @@ LLM_GATEWAY_SRC = ROOT / "projects" / "llm-gateway" / "src"
 OMO_SRC = ROOT / "projects" / "omo" / "src"
 sys.path.insert(0, str(OMO_SRC))
 
-from omo.omo_io import write_text_atomic
+from omo.omo_demo_artifacts import (
+    write_budget_audit_llm_sample,
+    write_budget_audit_rollout_summary,
+    write_budget_reject_summary,
+)
 
 
 def _load_jsonl_last(path: Path) -> dict:
@@ -74,11 +78,7 @@ def main() -> int:
         audit_log = audit_dir / "llm_calls.jsonl"
         audit_record = _load_jsonl_last(audit_log)
 
-        e4_dir = ROOT / ".omo" / "tasks" / "registry" / "done" / "OPC-P4-E4"
-        write_text_atomic(
-            e4_dir / "llm-audit-sample.json",
-            json.dumps(audit_record, ensure_ascii=False, indent=2) + "\n",
-        )
+        write_budget_audit_llm_sample(ROOT, audit_record)
 
         rollout_out = ROOT / ".omo" / "_delivery" / "audit-rollout" / "2026-06-12-opc-p4.json"
         rollout_cmd = [
@@ -102,22 +102,12 @@ def main() -> int:
             env={**os.environ, "PYTHONPATH": str(OMO_SRC)},
             check=False,
         )
-        write_text_atomic(
-            e4_dir / "audit-rollout-summary.md",
-            "\n".join(
-                [
-                    "# OPC P4 E4 rollout summary",
-                    "",
-                    f"- returncode: {rollout_result.returncode}",
-                    f"- output: `{rollout_out}`",
-                    "",
-                    "```text",
-                    rollout_result.stdout.strip(),
-                    rollout_result.stderr.strip(),
-                    "```",
-                    "",
-                ]
-            ),
+        write_budget_audit_rollout_summary(
+            ROOT,
+            rollout_out,
+            rollout_result.returncode,
+            rollout_result.stdout,
+            rollout_result.stderr,
         )
 
         # E3: budget reject registers formal debt
@@ -133,19 +123,7 @@ def main() -> int:
             raise RuntimeError(f"budget reject missing: {reject}")
 
         debt_path = ROOT / ".omo" / "debt" / "items" / "DEBT-OPC-P4-BUDGET-OPC-P4-BUDGET-DEMO.yaml"
-        e3_dir = ROOT / ".omo" / "tasks" / "registry" / "done" / "OPC-P4-E3"
-        write_text_atomic(
-            e3_dir / "budget-reject-summary.md",
-            "\n".join(
-                [
-                    "# OPC P4 E3 budget reject summary",
-                    "",
-                    f"- debt: `{debt_path}`",
-                    f"- error: `{reject['error']}`",
-                    "",
-                ]
-            ),
-        )
+        write_budget_reject_summary(ROOT, debt_path, reject["error"])
     finally:
         detection.detect_backends = original_detect
         registry_loader.route_role_request = original_route

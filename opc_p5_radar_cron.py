@@ -19,7 +19,13 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
 
-from omo.omo_io import write_text_atomic
+from omo.omo_radar_history import (
+    classify_candidate as _classify_candidate_runtime,
+    load_radar_history as _load_history_runtime,
+    update_radar_history as _update_history_runtime,
+    write_radar_snapshot as _write_daily_snapshot_runtime,
+)
+from omo.omo_weekly_loop import write_mof_state_bridge_snapshot
 
 
 def _now_iso() -> str:
@@ -49,67 +55,19 @@ def _run_radar(limit: int = 8) -> dict[str, Any]:
 
 
 def _classify_candidate(candidate: dict[str, Any]) -> bool:
-    source = str(candidate.get("source", ""))
-    return "(DB unavailable)" not in source and candidate.get("evidence_id") is not None
+    return _classify_candidate_runtime(candidate)
 
 
 def _load_history() -> dict[str, Any]:
-    path = _history_path()
-    if not path.exists():
-        return {"runs": []}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {"runs": []}
+    return _load_history_runtime(ROOT)
 
 
 def _update_history(payload: dict[str, Any]) -> dict[str, Any]:
-    history = _load_history()
-    runs = history.setdefault("runs", [])
-    candidates = payload.get("candidates", [])
-    runs.append(
-        {
-            "generated_at": payload["generated_at"],
-            "day": _day_bucket(),
-            "trigger_source": payload.get("trigger_source"),
-            "candidate_count": payload.get("candidates_count", len(candidates)),
-            "real_candidate_count": sum(1 for item in candidates if _classify_candidate(item)),
-            "all_fields_present": all(
-                bool(item.get("source")) and bool(item.get("timestamp")) and bool(item.get("next_action"))
-                for item in candidates
-            ),
-            "archive_path": payload.get("archive_path"),
-            "db_path": payload.get("db_path"),
-        }
-    )
-    runs.sort(key=lambda item: str(item.get("generated_at", "")))
-    history["runs"] = runs
-    history["summary"] = {
-        "run_count": len(runs),
-        "cron_run_count": sum(1 for item in runs if item.get("trigger_source") == "cron"),
-        "manual_run_count": sum(1 for item in runs if item.get("trigger_source") == "manual"),
-        "latest_generated_at": runs[-1]["generated_at"] if runs else None,
-        "latest_archive_path": runs[-1]["archive_path"] if runs else None,
-        "latest_day": runs[-1]["day"] if runs else None,
-    }
-    path = _history_path()
-    write_text_atomic(path, json.dumps(history, ensure_ascii=False, indent=2) + "\n")
-    return history
+    return _update_history_runtime(ROOT, payload)
 
 
 def _write_daily_snapshot(payload: dict[str, Any], history: dict[str, Any]) -> Path:
-    out_dir = ROOT / ".omo" / "_control" / "evolution" / "radar"
-    out_path = out_dir / f"{_day_bucket()}.json"
-    snapshot = {
-        "generated_at": payload["generated_at"],
-        "trigger_source": payload.get("trigger_source"),
-        "candidate_count": payload.get("candidates_count", 0),
-        "real_candidate_count": sum(1 for item in payload.get("candidates", []) if _classify_candidate(item)),
-        "archive_path": payload.get("archive_path"),
-        "history": history.get("summary", {}),
-    }
-    write_text_atomic(out_path, json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n")
-    return out_path
+    return _write_daily_snapshot_runtime(ROOT, payload, history)
 
 
 def main() -> int:
@@ -129,7 +87,6 @@ def main() -> int:
 def _run_mof_state_bridge_cron() -> None:
     """P5 增强: cron 跑完后跑 mof-state-bridge --strict 写 5repos 兼容字段."""
     import subprocess
-    out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     result = subprocess.run(
@@ -167,10 +124,7 @@ def _run_mof_state_bridge_cron() -> None:
             "blocking": not in_sync,
         },
     }
-    write_text_atomic(
-        out_dir / f"{today}-mof-state-bridge.json",
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-    )
+    write_mof_state_bridge_snapshot(ROOT, payload)
     if not in_sync:
         print(f"⚠️  mof-state-bridge 失同步: {m1_only} M1 only, written to 5repos", file=sys.stderr)
 

@@ -100,6 +100,7 @@ except ModuleNotFoundError:
     from omo.omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
     from omo.omo_redaction import redact_sensitive_text
     from omo.omo_task_schema import validate_active_tasks, validate_planned_tasks, validate_task_file
+    from omo.omo_worker_cmd_task import execute_task_command as package_execute_task_command
 
 
 def _timestamp_slug(now: str | None = None) -> str:
@@ -1570,6 +1571,11 @@ def main() -> int:
     validate_parser.add_argument("task_file", nargs="?")
     validate_parser.add_argument("--all-active", action="store_true")
     validate_parser.add_argument("--all-planned", action="store_true")
+    normalize_parser = task_sub.add_parser("normalize-planned")
+    normalize_parser.add_argument("task_id", nargs="?")
+    normalize_parser.add_argument("--actor", required=True)
+    normalize_parser.add_argument("--now", required=True)
+    normalize_parser.add_argument("--omo-dir", default=".omo")
     promote_eval_parser = task_sub.add_parser("promote-eval")
     promote_eval_parser.add_argument("task_id")
     promote_eval_parser.add_argument("--omo-dir", default=".omo")
@@ -1578,6 +1584,11 @@ def main() -> int:
     promote_apply_parser.add_argument("--promoted-by", required=True)
     promote_apply_parser.add_argument("--now", required=True)
     promote_apply_parser.add_argument("--omo-dir", default=".omo")
+    self_evolution_route_parser = task_sub.add_parser("route-self-evolution-remediation")
+    self_evolution_route_parser.add_argument("task_id")
+    self_evolution_route_parser.add_argument("--actor", required=True)
+    self_evolution_route_parser.add_argument("--now", required=True)
+    self_evolution_route_parser.add_argument("--omo-dir", default=".omo")
     promotion_history_parser = task_sub.add_parser("promotion-history")
     promotion_history_parser.add_argument("--omo-dir", default=".omo")
     promotion_history_parser.add_argument("--now")
@@ -1599,6 +1610,9 @@ def main() -> int:
     promotion_approval_status_parser.add_argument("--omo-dir", default=".omo")
     promotion_approval_status_parser.add_argument("--task-id")
     promotion_approval_status_parser.add_argument("--now")
+    approval_queue_status_parser = task_sub.add_parser("approval-queue-status")
+    approval_queue_status_parser.add_argument("--omo-dir", default=".omo")
+    approval_queue_status_parser.add_argument("--now")
     promotion_approval_history_parser = task_sub.add_parser("promotion-approval-history")
     promotion_approval_history_parser.add_argument("--omo-dir", default=".omo")
     promotion_approval_history_parser.add_argument("--now")
@@ -1689,6 +1703,9 @@ def main() -> int:
 
     if args.command == "worker" and args.worker_command == "rollout-accept":
         return _accept_worker_rollout(Path.cwd(), args.envelope_ref, accepted_by=args.accepted_by, now=args.now)
+
+    if args.command == "task":
+        return package_execute_task_command(args)
 
     if args.command == "task" and args.task_command == "validate":
         if args.all_planned:

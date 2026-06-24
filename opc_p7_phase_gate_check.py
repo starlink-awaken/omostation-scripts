@@ -19,7 +19,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
 
-from omo.omo_io import write_text_atomic
+from omo.omo_phase_gate import write_phase_gate_audit
 from omo.opc_phase_paths import PHASE_TASK_IDS, resolve_opc_phase_task_path
 
 
@@ -102,25 +102,7 @@ def build_matrix() -> dict[str, Any]:
 
 def write_audit(payload: dict[str, Any]) -> tuple[Path, Path]:
     today = datetime.now(UTC).strftime("%Y-%m-%d")
-    out_dir = ROOT / ".omo" / "_delivery" / "phase-gate"
-    json_path = out_dir / f"{today}.json"
-    write_text_atomic(json_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-    md_path = out_dir / f"{today}.md"
-    lines = [f"# Phase Gate Matrix — {today}", "", f"Generated: {payload['generated_at']}", ""]
-    lines.append("## Summary")
-    lines.append(f"- phases_total: {payload['summary']['phases_total']}")
-    lines.append(f"- phases_passed: **{payload['summary']['phases_passed']}**")
-    lines.append(f"- phases_open: {payload['summary']['phases_open']}")
-    lines.append("")
-    lines.append("| Phase | Gate | Status | Sub-gates |")
-    lines.append("|-------|------|--------|-----------|")
-    for r in payload["rows"]:
-        lines.append(
-            f"| {r['phase']} | {r['gate']} | {r['gate_status']} | "
-            f"{r['sub_gate_passed']}/{r['sub_gate_count']} passed, {r['sub_gate_open']} open |"
-        )
-    write_text_atomic(md_path, "\n".join(lines) + "\n")
-    return json_path, md_path
+    return write_phase_gate_audit(ROOT, payload, today)
 
 
 def main() -> int:

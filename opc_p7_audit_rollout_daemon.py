@@ -37,7 +37,6 @@ P7-H3: E2 dispatcher cron (monthly + weekly + pre-release) + 5 仓 §17 metrics 
 """
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import subprocess
@@ -50,7 +49,13 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
 
-from omo.omo_io import ensure_parent_dir, write_text_atomic
+from omo.omo_audit_rollout import (
+    history_index_path as _history_index_path_runtime,
+    update_history_index as _update_history_index_runtime,
+    write_daemon_summary as _write_daemon_summary_runtime,
+    write_drift_history as _write_drift_history_runtime,
+)
+from omo.omo_io import ensure_parent_dir
 
 
 REPOS = [
@@ -76,7 +81,7 @@ def _trigger_source() -> str:
 
 
 def _history_index_path() -> Path:
-    return ROOT / ".omo" / "_delivery" / "audit-rollout" / "index.json"
+    return _history_index_path_runtime(ROOT)
 
 
 def _run_primary_audit_rollout(mode: str) -> dict[str, Any]:
@@ -223,30 +228,7 @@ def _run_audit_rollout(mode: str) -> dict[str, Any]:
 
 
 def _write_drift_history(mode: str, rollout: dict[str, Any]) -> Path:
-    out_dir = ROOT / ".omo" / "_control" / "evolution" / "drift-history"
-    out_path = out_dir / f"{_today()}.json"
-    summary = {
-        "generated_at": _now_iso(),
-        "mode": mode,
-        "rollout": {
-            "returncode": rollout.get("returncode"),
-            "fallback_used": rollout.get("fallback_used"),
-            "output_path": rollout.get("output_path"),
-        },
-    }
-    payload = rollout.get("payload")
-    if isinstance(payload, dict) and "repos" in payload:
-        repos = payload["repos"]
-        summary["per_repo"] = {
-            name: {
-                "health_grade": data.get("health_grade"),
-                "drift": data.get("total_drift"),
-                "records": data.get("total_records"),
-            }
-            for name, data in repos.items()
-        }
-    write_text_atomic(out_path, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
-    return out_path
+    return _write_drift_history_runtime(ROOT, mode, rollout, _now_iso(), _today())
 
 
 def _load_history_index() -> dict[str, Any]:
@@ -260,75 +242,15 @@ def _load_history_index() -> dict[str, Any]:
 
 
 def _update_history_index(mode: str, rollout: dict[str, Any], history_path: Path) -> dict[str, Any]:
-    """index 写回 (LOCK_EX 防 race).
-
-    N 并行跑 N 条 entry 全部落盘 (无覆盖丢失):
-      1. open 锁文件 (LOCK_EX)
-      2. _load_history_index (此时其他进程阻塞)
-      3. append new run entry
-      4. write index.json
-      5. close 锁文件 (LOCK_UN 自动)
-
-    锁文件路径: index_path + ".lock" (与 index 同目录, 不污染 .omo 状态)
-    """
-    path = _history_index_path()
-    ensure_parent_dir(path)
-    lock_path = path.with_suffix(".lock")
-    lock_handle = open(lock_path, "w", encoding="utf-8")
-    try:
-        fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
-        try:
-            # load (在锁内, 避免 read-modify-write race)
-            if path.exists():
-                try:
-                    index = json.loads(path.read_text(encoding="utf-8"))
-                except json.JSONDecodeError:
-                    index = {"runs": []}
-            else:
-                index = {"runs": []}
-            runs = index.setdefault("runs", [])
-            payload = rollout.get("payload") if isinstance(rollout.get("payload"), dict) else {}
-            repos = payload.get("repos", {}) if isinstance(payload, dict) else {}
-            run_entry: dict[str, Any] = {
-                "generated_at": _now_iso(),
-                "day": _today(),
-                "mode": mode,
-                "trigger_source": _trigger_source(),
-                "returncode": rollout.get("returncode"),
-                "fallback_used": rollout.get("fallback_used"),
-                "primary_returncode": rollout.get("primary_returncode"),
-                "fallback_returncode": rollout.get("fallback_returncode"),
-                "output_path": rollout.get("output_path"),
-                "primary_output_path": rollout.get("primary_output_path"),
-                "fallback_output_path": rollout.get("fallback_output_path"),
-                "primary_error": rollout.get("primary_error"),
-                "repo_count": len(repos) if isinstance(repos, dict) else 0,
-                "history_path": str(history_path.relative_to(ROOT)),
-            }
-            if rollout.get("fallback_error"):
-                run_entry["fallback_error"] = rollout["fallback_error"]
-            runs.append(run_entry)
-            runs.sort(key=lambda item: str(item.get("generated_at", "")))
-            index["runs"] = runs
-            index["summary"] = {
-                "run_count": len(runs),
-                "weekly_runs": sum(1 for item in runs if item.get("mode") == "weekly"),
-                "monthly_runs": sum(1 for item in runs if item.get("mode") == "monthly"),
-                "pre_release_runs": sum(1 for item in runs if item.get("mode") == "pre-release"),
-                "cron_run_count": sum(1 for item in runs if item.get("trigger_source") == "cron"),
-                "manual_run_count": sum(1 for item in runs if item.get("trigger_source") == "manual"),
-                "fallback_used_count": sum(1 for item in runs if item.get("fallback_used")),
-                "failed_count": sum(1 for item in runs if item.get("returncode") not in (0, None)),
-                "latest_output_path": runs[-1]["output_path"] if runs else None,
-                "latest_trigger_source": runs[-1]["trigger_source"] if runs else None,
-            }
-            # 写回 (在锁内, 原子 write 对其他进程不可见中间态)
-            write_text_atomic(path, json.dumps(index, ensure_ascii=False, indent=2) + "\n")
-        finally:
-            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
-    finally:
-        lock_handle.close()
-    return index
+    return _update_history_index_runtime(
+        ROOT,
+        mode,
+        rollout,
+        history_path,
+        _now_iso(),
+        _today(),
+        _trigger_source(),
+    )
 
 
 def main() -> int:
@@ -349,9 +271,7 @@ def main() -> int:
         "history_index": str(_history_index_path().relative_to(ROOT)),
         "history_summary": history_index.get("summary", {}),
     }
-    out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
-    summary_path = out_dir / f"{_today()}-{mode}-daemon-summary.json"
-    write_text_atomic(summary_path, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
+    summary_path = _write_daemon_summary_runtime(ROOT, mode, summary, _today())
     print(f"# mode: {mode}", file=sys.stderr)
     print(f"# trigger_source: {_trigger_source()}", file=sys.stderr)
     print(f"# rollout rc: {rollout.get('returncode')}", file=sys.stderr)

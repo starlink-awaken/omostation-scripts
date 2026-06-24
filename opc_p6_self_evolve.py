@@ -3,8 +3,8 @@
 
 P6-G3 红线: self-evolution task 自动 active (无 human approval) = 禁止.
 
-实现: 读 drift detector 报告 + P5 radar, 产出 OMO planned task YAML.
-  - 任何 task 状态恒为 'planned'
+实现: 读 drift detector 报告 + P5 radar, 产出 OMO planned task packet.
+  - 任何 task 状态恒为合法 planned packet 状态 (`candidate`)
   - 标记 `approval_required: true` (人类审批才可 active)
   - 落 .omo/tasks/planned/OPC-P6-SELF-EVOLUTION-{n}.yaml
 """
@@ -20,7 +20,10 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
 
-from omo.omo_io import write_text_atomic
+from omo.omo_self_evolve import (
+    write_planned_self_evolution_tasks as _write_planned_tasks_runtime,
+    write_self_evolve_summary as _write_self_evolve_summary_runtime,
+)
 
 
 def _now_iso() -> str:
@@ -142,42 +145,8 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
 
 
 def write_planned_tasks(tasks: list[dict[str, Any]]) -> list[Path]:
-    """写 tasks 到 .omo/tasks/planned/ (红线: 仅 planned/, 永不入 active/).
-
-    返回落盘路径列表.
-    """
-    out_dir = ROOT / ".omo" / "tasks" / "planned"
-    paths: list[Path] = []
     ts = _now_iso()
-    for t in tasks:
-        out = out_dir / f"{t['id']}.yaml"
-        if out.exists():
-            # 复用策略: 同 task ID 不重复写
-            continue
-        body = (
-            f"id: {t['id']}\n"
-            f"title: {t['title']!r}\n"  # yaml-safe quote: 含 `:`/`\n` 的 title 不会破格式
-            f"status: planned\n"
-            f"approval_required: {str(t['approval_required']).lower()}\n"
-            f"human_approval_required: {str(t.get('human_approval_required', t['approval_required'])).lower()}\n"
-            f"approval_state: {t.get('approval_state', 'awaiting_human')!r}\n"
-            f"created_at: \"{ts}\"\n"
-            f"source: {t['source']!r}\n"
-            f"drift_ref: {t['drift_ref']!r}\n"
-            f"loop_history_ref: {t.get('loop_history_ref', '.omo/_control/evolution/loop/history.json')!r}\n"
-            f"review_lane: 'opc-p6-self-evolution-board'\n"
-            f"prerequisite_for: OPC-P6\n"
-            f"red_lines:\n"
-            f"  - 'self-evolution task 仅落 planned/, 永不入 active/ 除非 human approval'\n"
-            f"next_action: human reviewer approve in OMO audit queue before promoting to active/\n"
-        )
-        if t.get("last_run_at"):
-            body += f"last_run_at: \"{t['last_run_at']}\"\n"
-        if t.get("latest_week"):
-            body += f"latest_week: {t['latest_week']!r}\n"
-        write_text_atomic(out, body)
-        paths.append(out)
-    return paths
+    return _write_planned_tasks_runtime(ROOT, tasks, ts)
 
 
 def main() -> int:
@@ -191,9 +160,7 @@ def main() -> int:
         "tasks": [{"id": t["id"], "approval_required": t["approval_required"]} for t in tasks],
         "paths": [str(p.relative_to(ROOT)) for p in paths],
     }
-    out_dir = ROOT / ".omo" / "_control" / "evolution" / "self-evolve"
-    out_path = out_dir / f"{_now_iso()[:10]}.json"
-    write_text_atomic(out_path, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
+    out_path = _write_self_evolve_summary_runtime(ROOT, summary, summary["generated_at"])
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     print(f"# wrote: {out_path}", file=sys.stderr)

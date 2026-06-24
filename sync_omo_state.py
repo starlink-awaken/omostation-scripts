@@ -27,7 +27,17 @@ from omo.omo_state_schema import (
 def _load_yaml(path: Path) -> dict:
     if not path.exists():
         return {}
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    docs = [doc for doc in yaml.safe_load_all(path.read_text(encoding="utf-8")) if doc]
+    if not docs:
+        return {}
+    if len(docs) == 1:
+        return docs[0] if isinstance(docs[0], dict) else {}
+
+    merged: dict = {}
+    for doc in docs:
+        if isinstance(doc, dict):
+            merged.update(doc)
+    return merged
 
 
 def _write_yaml(path: Path, data: dict) -> None:
@@ -36,6 +46,16 @@ def _write_yaml(path: Path, data: dict) -> None:
 
 def _omo_ref(omo_dir: Path) -> Path:
     return Path(omo_dir.name)
+
+
+def _resolve_evidence_write_path(omo_dir: Path, relative_path: Path) -> Path:
+    evidence_root = omo_dir / "evidence"
+    if omo_dir.name == ".omo" and evidence_root.is_symlink():
+        target = evidence_root.readlink()
+        if not target.is_absolute():
+            target = (evidence_root.parent / target).resolve()
+        return target / relative_path
+    return evidence_root / relative_path
 
 
 def _count_task_group(tasks_dir: Path, group: str) -> int:
@@ -64,14 +84,18 @@ def _parse_iso8601(value: str | None) -> datetime | None:
 
 def _write_divergence_detail_artifact(omo_dir: Path, name: str, payload: dict[str, object]) -> str:
     ref = _omo_ref(omo_dir) / "evidence" / "divergence" / f"{name}.yaml"
-    _write_yaml(omo_dir.parent / ref, {"rule": name, **payload})
+    _write_yaml(_resolve_evidence_write_path(omo_dir, Path("divergence") / f"{name}.yaml"), {"rule": name, **payload})
     return str(ref)
 
 
 def _clear_divergence_detail_artifact(omo_dir: Path, name: str) -> None:
-    path = omo_dir / "evidence" / "divergence" / f"{name}.yaml"
-    if path.exists():
-        path.unlink()
+    candidates = [
+        omo_dir / "evidence" / "divergence" / f"{name}.yaml",
+        _resolve_evidence_write_path(omo_dir, Path("divergence") / f"{name}.yaml"),
+    ]
+    for path in candidates:
+        if path.exists():
+            path.unlink()
 
 
 def _current_phase(goals_data: dict) -> int | None:
