@@ -81,6 +81,8 @@ def main() -> int:
     # P5 增强 (2026-06-14): cron wrapper 末尾跑 mof-state-bridge --strict
     # 失同步写 .omo/_delivery/audit-rollout/{date}-mof-state-bridge.json
     _run_mof_state_bridge_cron()
+    # P5 增强 (2026-06-25): 证据驱动 smoke + God Module 检测 (让运行现实进入度量闭环)
+    _run_evidence_smoke_cron()
     return 0
 
 
@@ -127,6 +129,68 @@ def _run_mof_state_bridge_cron() -> None:
     write_mof_state_bridge_snapshot(ROOT, payload)
     if not in_sync:
         print(f"⚠️  mof-state-bridge 失同步: {m1_only} M1 only, written to 5repos", file=sys.stderr)
+
+
+def _run_evidence_smoke_cron() -> None:
+    """P5 增强 (2026-06-25): 证据驱动 smoke + God Module 检测, 让运行现实进入度量闭环.
+
+    Meadows 层 8 (反馈回路): evidence_health_score + God Module 数写进 delivery,
+    让 dashboard/radar 能读到运行现实 (而非只有任务治理分).
+    """
+    import subprocess
+
+    stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    out_dir = ROOT / ".omo" / "_delivery" / "evidence-smoke"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # evidence-smoke (拿 evidence_health_score)
+    evidence_score = None
+    try:
+        result = subprocess.run(
+            ["python3", str(ROOT / "bin" / "evidence-smoke.py"), "--quiet"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            evidence_score = float(result.stdout.strip())
+    except Exception:
+        pass
+
+    # check-god-module (JSON, 落盘供 dashboard)
+    god_total = None
+    try:
+        result = subprocess.run(
+            ["python3", str(ROOT / "bin" / "check-god-module.py"), "--json"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            data = json.loads(result.stdout.strip())
+            god_total = data.get("total")
+            (out_dir / "god-module.json").write_text(
+                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+    except Exception:
+        pass
+
+    summary = {
+        "generated_at": stamp,
+        "trigger_source": os.environ.get("OPC_TRIGGER", "manual"),
+        "source": "opc_p5_radar_cron",
+        "evidence_health_score": evidence_score,
+        "god_module_total": god_total,
+    }
+    (out_dir / "cron-summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print(
+        f"# evidence-smoke: score={evidence_score}, god-module total={god_total}",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":
