@@ -54,6 +54,33 @@ case "${1:-install}" in
             ls -lt "${WORKSPACE_ROOT:-/Users/xiamingxing/Workspace}/.omo/_log"/governance-agent-*.log 2>/dev/null | head -5
         fi
         ;;
+    --status-json|status-json)
+        # P76 增: 输出结构化 JSON 状态 (供 dashboard/工具消费)
+        if crontab -l 2>/dev/null | grep -q "$WRAPPER"; then
+            INSTALLED="true"
+            CRON_LINE_OUTPUT=$(crontab -l 2>/dev/null | grep "$WRAPPER" | head -1)
+        else
+            INSTALLED="false"
+            CRON_LINE_OUTPUT=""
+        fi
+        # 统计最近运行次数
+        RUN_COUNT=0
+        if [ -d "${WORKSPACE_ROOT:-/Users/xiamingxing/Workspace}/.omo/_log" ]; then
+            RUN_COUNT=$(ls "${WORKSPACE_ROOT:-/Users/xiamingxing/Workspace}/.omo/_log"/governance-agent-*.log 2>/dev/null | wc -l | tr -d ' ')
+        fi
+        # 输出 JSON
+        cat <<EOF
+{
+    "installed": ${INSTALLED},
+    "cron_line": "${CRON_LINE_OUTPUT}",
+    "wrapper": "${WRAPPER}",
+    "workspace_root": "${WORKSPACE_ROOT:-/Users/xiamingxing/Workspace}",
+    "log_dir": "${WORKSPACE_ROOT:-/Users/xiamingxing/Workspace}/.omo/_log",
+    "run_count": ${RUN_COUNT},
+    "command": "governance-agent.sh"
+}
+EOF
+        ;;
     *)
         echo "用法: $0 [install|--uninstall|--status]"
         exit 1
