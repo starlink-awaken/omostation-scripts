@@ -10,6 +10,7 @@ P7-H2: check_phase_gate.py 跑通 + 8 Gate acceptance 自动检查 + audit 写�
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -101,7 +102,7 @@ def build_matrix() -> dict[str, Any]:
 
 
 def write_audit(payload: dict[str, Any]) -> tuple[Path, Path]:
-    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    today = os.environ.get("OPC_GENERATED_AT") or datetime.now(UTC).strftime("%Y-%m-%d")
     return write_phase_gate_audit(ROOT, payload, today)
 
 
