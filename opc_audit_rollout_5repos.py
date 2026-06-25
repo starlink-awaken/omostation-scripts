@@ -38,6 +38,10 @@ def _now_iso() -> str:
 
 
 def _today() -> str:
+    # OPC_GENERATED_AT override (test/语义注入时间点, 见 opc_p7 T02 设计)
+    override = os.environ.get("OPC_GENERATED_AT")
+    if override:
+        return override
     return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
