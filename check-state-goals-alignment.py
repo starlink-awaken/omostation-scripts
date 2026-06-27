@@ -15,6 +15,7 @@ from pathlib import Path
 import yaml
 
 from lib.paths import OMO_DIR, SYSTEM_YAML, GOALS_YAML
+from lib.yaml_utils import load_yaml, load_yaml_multi
 
 
 def _current_phase(goals_data: dict) -> int | None:
@@ -49,8 +50,12 @@ def main() -> int:
         print(f"ERROR: {goals_path} not found")
         return 1
 
-    state = yaml.safe_load(state_path.read_text(encoding="utf-8")) or {}
-    goals = yaml.safe_load(goals_path.read_text(encoding="utf-8")) or {}
+    state = load_yaml(state_path)
+    goals_docs = load_yaml_multi(goals_path)
+    goals = {}
+    for doc in goals_docs:
+        if isinstance(doc, dict):
+            goals.update(doc)
 
     active_phase = _current_phase(goals)
     goal_task_ids = _current_goal_task_ids(goals)
@@ -59,7 +64,7 @@ def main() -> int:
     done_ids: set[str] = set()  # done 历史 task 不算 orphaned (已完成的可在 current goals 之外)
     for group in ("active", "blocked", "done"):
         for task_file in (omo_dir / "tasks" / group).rglob("*.yaml"):
-            task = yaml.safe_load(task_file.read_text(encoding="utf-8")) or {}
+            task = load_yaml(task_file)
             task_id = task.get("id")
             if not task_id:
                 continue
