@@ -9,8 +9,11 @@ from pathlib import Path
 
 import yaml
 
-WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
-OMO_SRC = WORKSPACE_ROOT / "projects" / "omo" / "src"
+from lib.bootstrap import workspace_root, omo_src_path
+from lib.paths import OMO_DIR
+
+WORKSPACE_ROOT = workspace_root()
+OMO_SRC = omo_src_path()
 if str(OMO_SRC) not in sys.path:
     sys.path.insert(0, str(OMO_SRC))
 

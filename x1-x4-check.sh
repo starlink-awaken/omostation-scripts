@@ -3,14 +3,7 @@
 #
 # 一键运行所有 X 维度检查
 
-set -euo pipefail
-
-REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-
-CYAN='\033[0;36m'
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+source "$(dirname "$0")/lib/shell/common.sh"
 
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"

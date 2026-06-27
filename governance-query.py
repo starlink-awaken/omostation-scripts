@@ -20,10 +20,13 @@ import json
 import sys
 from pathlib import Path
 
+from lib.bootstrap import workspace_root
+from lib.paths import OMO_DIR
+
 
 def load_governance_data() -> dict:
     """加载治理数据"""
-    data_path = Path(".omo/_control/governance-data.json")
+    data_path = OMO_DIR / "_control" / "governance-data.json"
     if not data_path.exists():
         print("错误: governance-data.json 不存在，请先运行 make governance-data")
         sys.exit(1)

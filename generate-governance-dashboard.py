@@ -17,13 +17,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import yaml
-
-
-def load_yaml(path: Path) -> dict:
-    """加载 YAML 文件"""
-    with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+from lib.bootstrap import workspace_root
+from lib.paths import SYSTEM_YAML, OMO_DIR
+from lib.yaml_utils import load_yaml
 
 
 def generate_html(system_data: dict, dashboard_data: dict) -> str:
@@ -176,7 +172,7 @@ def generate_html(system_data: dict, dashboard_data: dict) -> str:
 def main():
     parser = argparse.ArgumentParser(description="生成治理仪表板 HTML 报告")
     parser.add_argument("--output", "-o", default="governance-report.html", help="输出文件路径")
-    parser.add_argument("--omo-dir", default=".omo", help=".omo 目录路径")
+    parser.add_argument("--omo-dir", default=str(OMO_DIR), help=".omo 目录路径")
     args = parser.parse_args()
     
     omo_dir = Path(args.omo_dir)

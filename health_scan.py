@@ -8,6 +8,8 @@ Scans all active projects under ~/Workspace/projects/, runs tests and lint,
 outputs a markdown health table to stdout. Designed for daily cron.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess
@@ -15,7 +17,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-WORKSPACE = Path.home() / "Workspace"
+from lib.bootstrap import workspace_root
+
+WORKSPACE = workspace_root()
 PROJECTS_DIR = WORKSPACE / "projects"
 
 # Projects that are known to have test suites

@@ -23,8 +23,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from lib.bootstrap import workspace_root
+from lib.paths import SYSTEM_YAML
+
 GOV_LOG = Path.home() / ".hermes" / "architecture" / "governance_log" / "governance.jsonl"
-SYSTEM_YAML = Path.home() / "Workspace" / ".omo" / "state" / "system.yaml"
 MAX_GOV_AGE_HOURS = 48
 MIN_CRON_JOBS = 7
 

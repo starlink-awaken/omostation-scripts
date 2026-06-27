@@ -14,6 +14,8 @@ from pathlib import Path
 
 import yaml
 
+from lib.paths import OMO_DIR, SYSTEM_YAML, GOALS_YAML
+
 
 def _current_phase(goals_data: dict) -> int | None:
     phase = goals_data.get("phase")
@@ -36,9 +38,9 @@ def _current_goal_task_ids(goals_data: dict) -> set[str]:
 
 
 def main() -> int:
-    omo_dir = Path(".omo")
-    state_path = omo_dir / "state" / "system.yaml"
-    goals_path = omo_dir / "goals" / "current.yaml"
+    omo_dir = OMO_DIR
+    state_path = SYSTEM_YAML
+    goals_path = GOALS_YAML
 
     if not state_path.exists():
         print(f"ERROR: {state_path} not found")

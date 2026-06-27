@@ -3,16 +3,7 @@
 #
 # 按项目展示债务分布，识别高风险项目。
 
-set -euo pipefail
-
-REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-
-# 颜色
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+source "$(dirname "$0")/lib/shell/common.sh"
 
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"

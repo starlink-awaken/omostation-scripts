@@ -15,9 +15,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from lib.bootstrap import workspace_root, omo_src_path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+ROOT = workspace_root()
+sys.path.insert(0, str(omo_src_path()))
 
 from omo.omo_radar_history import (
     classify_candidate as _classify_candidate_runtime,
