@@ -27,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lib.bootstrap import workspace_root
 from lib.paths import OMO_DIR, TRUTH_DIR
+from lib.yaml_utils import load_yaml_or_default
 
 WORKSPACE_ROOT = workspace_root()
 DELIVERY_DIR = OMO_DIR / "_delivery" / "freshness-audit"
@@ -53,8 +54,7 @@ def check_debt_evidence() -> dict:
     for yaml_file in debt_dir.glob("*.yaml"):
         total += 1
         try:
-            import yaml
-            data = yaml.safe_load(yaml_file.read_text(encoding="utf-8")) or {}
+            data = load_yaml_or_default(yaml_file, {})
         except Exception:
             continue
         state = data.get("lifecycle_state", "unknown")
@@ -133,8 +133,7 @@ def check_mof_version_bump() -> dict:
         return {"rule_id": "X2-FRESH-MOF-VERSION-BUMP", "status": "warning",
                 "stale": 1, "total": 0, "details": "mof-version.yaml missing"}
     try:
-        import yaml
-        data = yaml.safe_load(version_file.read_text(encoding="utf-8"))
+        data = load_yaml_or_default(version_file, {})
         history = data.get("history", [])
         if not history:
             return {"rule_id": "X2-FRESH-MOF-VERSION-BUMP", "status": "warning",

@@ -10,8 +10,6 @@ Checks:
 import sys
 from pathlib import Path
 
-import yaml
-
 from lib.bootstrap import workspace_root
 from lib.yaml_utils import load_yaml
 

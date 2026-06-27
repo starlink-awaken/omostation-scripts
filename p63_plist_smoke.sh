@@ -13,7 +13,9 @@
 
 set -e
 
-WORKSPACE="/Users/xiamingxing/Workspace"
+source "$(dirname "$0")/lib/shell/common.sh"
+
+WORKSPACE="$REPO_ROOT"
 OMO_PROJECT="$WORKSPACE/projects/omo"
 AGORA_PROJECT="$WORKSPACE/projects/agora"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"

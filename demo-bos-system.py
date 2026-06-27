@@ -34,7 +34,6 @@ banner("eCOS v5 · BOS URI System Demo")
 
 # 1. Workflow M1 nodes
 banner("1. Workflow M1 Nodes")
-import yaml
 wf_dir = WS / "projects" / "ecos" / "src" / "ecos" / "ssot" / "mof" / "m1" / "workflow"
 workflows = list(wf_dir.glob("WORKFLOW-*.yaml"))
 ok(f"{len(workflows)} workflow M1 nodes found")

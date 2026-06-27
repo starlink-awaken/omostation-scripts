@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml_or_default
 
 ROOT = workspace_root()
 
@@ -65,9 +66,7 @@ def metrics_for_workspace() -> dict[str, Any]:
         for f in debt_dir.glob("*.yaml"):
             total_records += 1
             try:
-                import yaml
-
-                payload = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+                payload = load_yaml_or_default(f, {})
                 if payload.get("status") == "open":
                     drift_count += 1
             except Exception:

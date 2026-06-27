@@ -60,8 +60,9 @@ omostation workspace
 ├─────────────────────────────────────────────────────────────┤
 │  L0  共享基础设施层                                            │
 │  lib/bootstrap.py · lib/paths.py · lib/yaml_utils.py        │
-│  lib/cli.py · lib/shell/common.sh                           │
-│  (6 个模块)                                                   │
+│  lib/cli.py · lib/validators.py · lib/ssot_checker.py      │
+│  lib/cost_tracker.py · lib/shell/common.sh                  │
+│  (9 个模块)                                                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -116,8 +117,11 @@ lib/
 ├── __init__.py          包入口
 ├── bootstrap.py          workspace_root() · omo_src_path() · scripts_dir()
 ├── paths.py              OMO_DIR · SYSTEM_YAML · TRUTH_DIR · BOS_SERVICES_YAML (30+ 常量)
-├── yaml_utils.py         load_yaml() · load_yaml_multi() · write_yaml_atomic()
+├── yaml_utils.py         load_yaml() · load_yaml_multi() · write_yaml_atomic() · load_yaml_or_default()
 ├── cli.py                BaseParser (自动注入 --omo-dir)
+├── validators.py         LintReport · require_text() · require_fields() · require_list_min() · match_pattern_list()
+├── ssot_checker.py       SSOTChecker · require_text() · forbid_text() · check_targets() · check_targets_with_forbidden()
+├── cost_tracker.py       CostTracker · log_call() · summary_by_org() (SQLite, context manager)
 └── shell/
     └── common.sh         REPO_ROOT · OMO_DIR · pass() · warn() · fail() · section() · exit_summary()
 ```
@@ -309,23 +313,26 @@ exit_summary
 
 | 阶段 | 内容 | 状态 | 净效果 |
 |------|------|------|--------|
-| Step 1 | 创建 lib/ 共享层 (6 模块) | ✅ 完成 | 新基础设施 |
-| Step 2 | 迁移 7 个 shell 脚本 | ✅ 完成 | -77 行重复 |
-| Step 2 | 迁移 11 个 Python 脚本 | ✅ 完成 | 消除 Path.home() x2, sys.path.insert x6, .omo 硬编码 x3 |
-| Step 3 | 迁移剩余 check-*.py (25 个) | 待定 | 消除 .omo 路径硬编码 |
-| Step 3 | 迁移 omo/ 子目录脚本 (3 个) | 待定 | 统一 bootstrap 模式 |
-| Step 4 | omo_worker.py 拆分评估 | 待定 | 1822 行 → 按域拆分 |
+| Step 1 | 创建 lib/ 共享层 (5 模块) | ✅ 完成 | 新基础设施 |
+| Step 2 | 迁移 7 个 shell + 11 个 Python 脚本 | ✅ 完成 | -77 行重复, 消除 Path.home() x2, sys.path.insert x6 |
+| Step 3 | 迁移 26 个 check-*.py + 3 个 omo/ 子目录脚本 | ✅ 完成 | 消除 .omo 路径硬编码 |
+| Step 4 | 迁移剩余 41 个脚本 (OPC/shell/historical) | ✅ 完成 | 84/95 脚本迁移 (88%) |
+| Step 5 | 提取 validators/ssot_checker/cost_tracker | ✅ 完成 | 3 个可复用 lib/ 模块 |
+| Step 6 | 消除所有裸 yaml.safe_load (11 处) | ✅ 完成 | 全部走 lib/yaml_utils |
+| Step 7 | 清理 dead imports (3 处) | ✅ 完成 | lint-opc-carriers, check-state-goals, cost_track_org |
+| Step 8 | omo_worker.py 拆分评估 | 待定 | 1822 行 → 按域拆分 |
 
-### 量化目标
+### 量化指标
 
 | 指标 | 原始 | 当前 | 目标 |
 |------|------|------|------|
-| workspace root 发现模式 | 3 种 | 1 种 (`lib/bootstrap`) | 1 种 |
-| `Path.home()/"Workspace"` | 2 处 | 0 | 0 |
-| `sys.path.insert` 重复 | 15 处 | 9 处 (6 已迁移) | 0 (全走 `omo_src_path()`) |
-| shell 颜色 helper 重复 | 7 处 | 0 (全 source common.sh) | 0 |
-| `.omo/` 路径硬编码 | 429 处 | ~390 | <100 (高密度文件迁移后) |
-| lib/ 依赖脚本数 | 0 | 18 | 50+ |
+| workspace root 发现模式 | 3 种 | 1 种 (`lib/bootstrap`) | ✅ 1 种 |
+| `Path.home()/"Workspace"` | 2 处 | 0 | ✅ 0 |
+| `sys.path.insert` 重复 | 15 处 | 9 处 (6 已迁移) | L2 脚本固有需求 |
+| shell 颜色 helper 重复 | 7 处 | 0 (全 source common.sh) | ✅ 0 |
+| 裸 `yaml.safe_load` | 12 处 | 0 (全走 lib/yaml_utils) | ✅ 0 |
+| 裸 `import yaml` (无 lib) | 12 处 | 0 | ✅ 0 |
+| lib/ 依赖脚本数 | 0 | 71 | ✅ 75%+ |
 
 ---
 

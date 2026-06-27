@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Governance heartbeat — append a timestamp entry to governance.jsonl.
+"""[DEPRECATED] Governance heartbeat — append a timestamp entry to governance.jsonl.
+
+This script is superseded by omo_gov_heartbeat.py which provides a more
+comprehensive check (govlog age + cron count + health score).
+
+Kept for backward compatibility. New code should use omo_gov_heartbeat.py
+or lib/heartbeat.py (if/when extracted).
 
 Usage:
     python3 scripts/gov_heartbeat.py
-
-Writes one JSONL entry each run. Designed to be called from governance crons
-(arc-conv-gate-verification, omo-gov-heartbeat) so the pipeline never goes silent.
 """
 
 import json

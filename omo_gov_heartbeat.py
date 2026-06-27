@@ -25,6 +25,7 @@ from pathlib import Path
 
 from lib.bootstrap import workspace_root
 from lib.paths import SYSTEM_YAML
+from lib.yaml_utils import load_yaml
 
 GOV_LOG = Path.home() / ".hermes" / "architecture" / "governance_log" / "governance.jsonl"
 MAX_GOV_AGE_HOURS = 48
@@ -101,8 +102,7 @@ def check_health_score() -> dict:
         return {"status": "warning", "msg": "system.yaml not found"}
 
     try:
-        import yaml
-        data = yaml.safe_load(SYSTEM_YAML.read_text())
+        data = load_yaml(SYSTEM_YAML)
         score = data.get("health_score", "?")
         return {"status": "ok", "health_score": score}
     except Exception as e:

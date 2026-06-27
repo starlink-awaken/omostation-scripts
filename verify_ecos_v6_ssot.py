@@ -9,10 +9,10 @@ from __future__ import annotations
 import os
 import re
 import sys
-import yaml
 from pathlib import Path
 
 from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml
 
 ROOT = workspace_root()
 
@@ -30,7 +30,7 @@ def load_l0_registry() -> set[str]:
     path = ROOT / "projects" / "agora" / "etc" / "bos-services.yaml"
     if not path.exists():
         return set()
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data = load_yaml(path)
     return {s["uri"].rstrip("/") for s in data.get("services", [])}
 
 def verify_ssot():

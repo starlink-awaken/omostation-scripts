@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml
 
 # ── 已知的 MCP server 文件（默认回退，当 convergence.yaml 不存在时使用） ──
 KNOWN_MCP_FILES = [
@@ -51,18 +52,11 @@ def _discover_from_convergence() -> list[str]:
     ws = _find_workspace_root()
     yaml_path = ws / "projects" / "kairon" / "packages" / "gateway" / "scripts" / "convergence.yaml"
 
-    try:
-        import yaml  # type: ignore[import-untyped]  # noqa: PLC0415
-    except ImportError:
-        print("⚠  PyYAML 未安装 — 使用 KNOWN_MCP_FILES 回退", file=sys.stderr)
-        return KNOWN_MCP_FILES
-
     if not yaml_path.exists():
         print(f"⚠  convergence.yaml 不存在 ({yaml_path}) — 使用 KNOWN_MCP_FILES 回退", file=sys.stderr)
         return KNOWN_MCP_FILES
 
-    with open(yaml_path) as f:
-        config = yaml.safe_load(f)
+    config = load_yaml(yaml_path)
 
     projects: dict = config.get("projects", {})
     ignore_set: set = set(config.get("ignore", []))

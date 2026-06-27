@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.bootstrap import workspace_root, omo_src_path
+from lib.yaml_utils import load_yaml_or_default
 
 ROOT = workspace_root()
 sys.path.insert(0, str(omo_src_path()))
@@ -43,12 +44,10 @@ def _now_iso() -> str:
 
 
 def _read_yaml(rel: str) -> dict[str, Any] | None:
-    import yaml
-
     p = ROOT / rel
     if not p.exists():
         return None
-    return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    return load_yaml_or_default(p, {})
 
 
 def _check_phase(phase: str, gate: str, plan_rel: str | None, task_id: str | None) -> dict[str, Any]:

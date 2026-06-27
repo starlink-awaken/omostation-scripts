@@ -33,8 +33,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from lib.bootstrap import workspace_root
 from lib.paths import OMO_DIR
 from lib.yaml_utils import load_yaml

@@ -10,10 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-
 from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml_or_default
 ROOT = workspace_root()
 OMO_SRC = ROOT / "projects" / "omo" / "src"
 if str(OMO_SRC) not in sys.path:
@@ -56,7 +54,7 @@ def _write_yaml(path: Path, data: dict[str, Any]) -> None:
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return load_yaml_or_default(path, {})
 
 
 def _write_text(path: Path, content: str) -> None:

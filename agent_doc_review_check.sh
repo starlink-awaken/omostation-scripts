@@ -13,6 +13,8 @@
 
 set -e
 
+source "$(dirname "$0")/lib/shell/common.sh"
+
 LOG="$HOME/.omo/_delivery/agent_doc_update.log"
 N=${1:-5}
 

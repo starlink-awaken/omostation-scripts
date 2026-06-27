@@ -2,7 +2,9 @@
 # BOS URI Performance Baseline
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+source "$(dirname "$0")/lib/shell/common.sh"
+
+cd "$REPO_ROOT"
 
 echo "=== BOS Performance Baseline ==="
 echo ""

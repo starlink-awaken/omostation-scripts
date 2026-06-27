@@ -7,10 +7,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
-
 from lib.bootstrap import workspace_root, omo_src_path
 from lib.paths import OMO_DIR
+from lib.yaml_utils import load_yaml_multi
 
 WORKSPACE_ROOT = workspace_root()
 OMO_SRC = omo_src_path()
@@ -30,7 +29,7 @@ from omo.omo_state_schema import (
 def _load_yaml(path: Path) -> dict:
     if not path.exists():
         return {}
-    docs = [doc for doc in yaml.safe_load_all(path.read_text(encoding="utf-8")) if doc]
+    docs = [doc for doc in load_yaml_multi(path) if doc]
     if not docs:
         return {}
     if len(docs) == 1:

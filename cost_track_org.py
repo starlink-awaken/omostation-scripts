@@ -6,7 +6,6 @@
 """
 
 import json
-import sys
 
 from lib.cost_tracker import CostTracker
 

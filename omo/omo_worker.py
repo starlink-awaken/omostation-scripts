@@ -7,8 +7,6 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
-
 try:
     from scripts.omo_admission import evaluate_worker_envelope, request_conditional_approval
     from scripts.omo_governance import propose_truth_mutation
@@ -58,6 +56,10 @@ except ModuleNotFoundError:
     # 注入 omo src 路径, 兼容从 scripts/omo/ 目录直接 python omo_worker.py 跑的场景
     import sys
     from pathlib import Path
+    _scripts_dir = Path(__file__).resolve().parents[1]
+    if str(_scripts_dir) not in sys.path:
+        sys.path.insert(0, str(_scripts_dir))
+    from lib.yaml_utils import load_yaml_or_default
     _omo_src = Path(__file__).resolve().parents[2] / "projects" / "omo" / "src"
     if str(_omo_src) not in sys.path:
         sys.path.insert(0, str(_omo_src))
@@ -120,7 +122,7 @@ def _parse_iso8601(value: str | None) -> datetime | None:
 
 
 def _load_yaml(path: Path) -> dict:
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return load_yaml_or_default(path, {})
 
 
 def _write_yaml(path: Path, data: dict) -> None:

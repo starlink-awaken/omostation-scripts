@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 
 # Setup paths
 from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml
 ROOT = workspace_root()
 sys.path.insert(0, str(ROOT / "projects" / "runtime" / "src"))
 sys.path.insert(0, str(ROOT / "projects" / "llm-gateway" / "src"))
@@ -59,8 +60,7 @@ def run_experiment():
     if debt_path.exists():
         print(f"✅ SUCCESS: OMO Debt record created at {debt_path}")
         print("📄 Debt Content Summary:")
-        import yaml
-        debt = yaml.safe_load(debt_path.read_text())
+        debt = load_yaml(debt_path)
         print(f"   - ID: {debt['id']}")
         print(f"   - Severity: {debt['severity']}")
         print(f"   - Last Seen: {debt['last_seen_at']}")
