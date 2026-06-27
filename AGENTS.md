@@ -23,7 +23,7 @@ python3 -c "from lib.bootstrap import workspace_root; print(workspace_root())"
 
 ```
 scripts/
-├── lib/         ── 共享基础设施 (bootstrap, paths, yaml_utils, cli, shell/common.sh)
+├── lib/         ── 共享基础设施 (9 模块: bootstrap, paths, yaml_utils, cli, validators, ssot_checker, cost_tracker, shell/common.sh)
 ├── (顶层)      ── 95 个脚本, 按命名前缀分类 (见 INDEX.md)
 ├── omo/        ── OMO 治理脚本 (governance-agent, omo_worker, x1/x2/x3 审计)
 ├── shell/      ── Shell 工具 (backup, restore, bridge install, watchdog)
@@ -32,14 +32,17 @@ scripts/
 
 ## 共享基础设施 (lib/)
 
-`lib/` 是正式 Python 子包, 为所有脚本提供统一基础设施:
+`lib/` 是正式 Python 子包, 为所有脚本提供统一基础设施。当前 84/95 脚本已迁移 (88%)。
 
 | 模块 | 用途 |
 |------|------|
 | `lib/bootstrap.py` | workspace root 发现 (统一 3 种模式 → 1 种) |
-| `lib/paths.py` | .omo/ 4-plane 路径常量 |
-| `lib/yaml_utils.py` | YAML 读写统一实现 |
+| `lib/paths.py` | .omo/ 4-plane 路径常量 (30+ 常量) |
+| `lib/yaml_utils.py` | YAML 读写统一实现 (`load_yaml` / `load_yaml_multi` / `load_yaml_or_default` / `write_yaml_atomic`) |
 | `lib/cli.py` | argparse base, 自动注入 --omo-dir |
+| `lib/validators.py` | lint 校验框架 (LintReport + require_fields / require_list_min / match_pattern_list) |
+| `lib/ssot_checker.py` | SSOT 文档校验 (SSOTChecker + require/forbid/check_targets) |
+| `lib/cost_tracker.py` | SQLite 成本跟踪 (CostTracker + log_call / summary_by_org) |
 | `lib/shell/common.sh` | shell 颜色 helper + REPO_ROOT + pass/warn/fail |
 
 **新脚本强制使用 lib/, 旧脚本渐进迁移。**

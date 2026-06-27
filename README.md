@@ -2,13 +2,13 @@
 
 > Omostation 工作站的运维脚本和自动化工具集合 (独立 git 子模块)。
 > 顶层 95 个脚本 + 4 个子目录 (`lib/`, `omo/`, `shell/`, `install/`)。
-> 全量分类索引见 [INDEX.md](INDEX.md)。
+> 全量分类索引见 [INDEX.md](INDEX.md)，架构设计见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 目录结构
 
 ```
 scripts/
-├── lib/         ── 共享基础设施 (bootstrap, paths, yaml_utils, cli, shell/common.sh)
+├── lib/         ── 共享基础设施 (9 模块: bootstrap, paths, yaml_utils, cli, validators, ssot_checker, cost_tracker, shell/common.sh)
 ├── omo/         ── OMO 治理脚本 (governance-agent, omo_worker, x1/x2/x3 审计)
 ├── shell/       ── Shell 工具 (backup, restore, bridge install, watchdog)
 ├── install/     ── 安装向导 (setup.sh)
@@ -26,21 +26,26 @@ git submodule update --init scripts/
 
 ## 共享基础设施 (lib/)
 
-新增脚本强制使用 `lib/` 共享层，旧脚本渐进迁移：
+新增脚本强制使用 `lib/` 共享层，旧脚本渐进迁移。当前 84/95 脚本已迁移 (88%)。
+
+### Python
 
 ```python
-# Python
 from lib.bootstrap import workspace_root
 from lib.paths import OMO_DIR, SYSTEM_YAML
-from lib.yaml_utils import load_yaml
+from lib.yaml_utils import load_yaml, load_yaml_multi
+from lib.validators import LintReport
+from lib.ssot_checker import SSOTChecker
+from lib.cost_tracker import CostTracker
 ```
 
+### Shell
+
 ```bash
-# Shell
 source "$(dirname "$0")/lib/shell/common.sh"
 ```
 
-详见 [INDEX.md](INDEX.md) §11。
+详见 [INDEX.md](INDEX.md) §11 和 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 引用方
 

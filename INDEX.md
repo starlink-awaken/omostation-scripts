@@ -1,7 +1,7 @@
 # scripts/INDEX.md — 分类索引
 
 > 全量脚本分类索引。新增脚本必须在此登记。
-> 最后更新: 2026-06-27
+> 最后更新: 2026-06-27 (lib/ 9 模块同步 + gov_heartbeat.py 标记 deprecated)
 
 ## 1. CI 治理检查 (`check-*.py`) — 26 个
 
@@ -106,7 +106,7 @@
 |------|--------|------|
 | `sync_omo_state.py` | Makefile (`governance-sync`), `.omo/_truth/`, `.omo/tasks/README.md` | OMO 状态同步 |
 | `omo_gov_heartbeat.py` | 无直接引用 | OMO 治理心跳 (可能 cron 调用) |
-| `gov_heartbeat.py` | 无直接引用 | 治理心跳 |
+| `gov_heartbeat.py` | [DEPRECATED] 无直接引用 | 治理心跳 (已废弃, 被 omo_gov_heartbeat.py 取代) |
 | `omo_worker.py` | `.omo/_truth/registry/mutation-surfaces.yaml`, `.omo/tasks/README.md` | OMO worker 调度/分派/提升核心 |
 
 ## 6. SOP 脚本 — 2 个
@@ -227,18 +227,21 @@
 |------|------|
 | `setup.sh` | 安装与配置向导 |
 
-## 11. 共享基础设施 (`lib/`) — NEW
+## 11. 共享基础设施 (`lib/`)
 
 > scripts/ 作为独立 git 子模块, `lib/` 是正式 Python 子包, 为所有脚本提供共享基础设施。
-> 新脚本强制使用 `lib/`, 旧脚本渐进迁移。
+> 新脚本强制使用 `lib/`, 旧脚本渐进迁移。当前 84/95 脚本已迁移 (88%)。
 
 | 文件 | 暴露 API | 用途 |
 |------|---------|------|
 | `lib/__init__.py` | (package marker) | 包入口, 说明文档 |
 | `lib/bootstrap.py` | `workspace_root()`, `omo_src_path()`, `scripts_dir()` | workspace root 发现 (统一 3 种模式 → 1 种) |
-| `lib/paths.py` | `OMO_DIR`, `SYSTEM_YAML`, `TRUTH_DIR`, `BOS_SERVICES_YAML` 等 | .omo/ 4-plane 路径常量 (消除 429 处硬编码) |
-| `lib/yaml_utils.py` | `load_yaml()`, `load_yaml_multi()`, `write_yaml_atomic()`, `load_yaml_or_default()` | YAML 读写统一实现 (消除 3+ 套独立实现) |
+| `lib/paths.py` | `OMO_DIR`, `SYSTEM_YAML`, `TRUTH_DIR`, `BOS_SERVICES_YAML` 等 30+ 常量 | .omo/ 4-plane 路径常量 (消除 429 处硬编码) |
+| `lib/yaml_utils.py` | `load_yaml()`, `load_yaml_multi()`, `write_yaml_atomic()`, `load_yaml_or_default()` | YAML 读写统一实现 (消除 3+ 套独立实现, 防多文档 bug) |
 | `lib/cli.py` | `BaseParser` | argparse base, 自动注入 `--omo-dir` |
+| `lib/validators.py` | `LintReport`, `require_text()`, `require_exists()`, `require_fields()`, `require_list_min()`, `match_pattern_list()` | lint 校验框架 (从 lint-opc-carriers.py 提取) |
+| `lib/ssot_checker.py` | `SSOTChecker`, `require_text()`, `forbid_text()`, `check_targets()`, `check_targets_with_forbidden()` | SSOT 文档校验 (从 check-*-ssot.py 提取) |
+| `lib/cost_tracker.py` | `CostTracker`, `log_call()`, `summary_by_org()` | SQLite 成本跟踪 (从 cost_track_org.py 提取, 支持 context manager) |
 | `lib/shell/common.sh` | `pass()`, `warn()`, `fail()`, `info()`, `section()`, `exit_summary()`, `$REPO_ROOT`, `$OMO_DIR` | shell 共享: 颜色 helper + workspace 发现 + 输出格式 |
 
 ### 使用方式
