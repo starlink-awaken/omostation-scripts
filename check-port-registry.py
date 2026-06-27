@@ -8,15 +8,17 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml
+
+WORKSPACE = workspace_root()
 
 
 def load_registry_ports() -> set[int]:
     """加载 port-registry.yaml 中的已注册端口。"""
     try:
-        import yaml
         reg = WORKSPACE / "protocols" / "port-registry.yaml"
-        data = yaml.safe_load(reg.read_text(encoding="utf-8")) or {}
+        data = load_yaml(reg) or {}
         return set(data.get("ports", {}).keys())
     except Exception:
         return set()
@@ -25,9 +27,8 @@ def load_registry_ports() -> set[int]:
 def load_env_only_ports() -> set[int]:
     """加载注册表 types 字段标记的 env-only 端口(代码用 env 变量注入,不硬编码)。"""
     try:
-        import yaml
         reg = WORKSPACE / "protocols" / "port-registry.yaml"
-        data = yaml.safe_load(reg.read_text(encoding="utf-8")) or {}
+        data = load_yaml(reg) or {}
         return {int(p) for p, t in (data.get("types") or {}).items() if t == "env-only"}
     except Exception:
         return set()

@@ -24,9 +24,11 @@ import sys
 from datetime import datetime, UTC
 from pathlib import Path
 
-WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
-OMO_DIR = WORKSPACE_ROOT / ".omo"
-TRUTH_DIR = OMO_DIR / "_truth"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lib.bootstrap import workspace_root
+from lib.paths import OMO_DIR, TRUTH_DIR
+
+WORKSPACE_ROOT = workspace_root()
 DELIVERY_DIR = OMO_DIR / "_delivery" / "freshness-audit"
 
 

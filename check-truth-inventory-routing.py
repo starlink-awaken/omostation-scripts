@@ -5,7 +5,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+
+WORKSPACE = workspace_root()
 INVENTORY = WORKSPACE / ".omo" / "_truth" / "INVENTORY.md"
 TRUTH_INDEX = WORKSPACE / ".omo" / "_truth" / "INDEX.md"
 

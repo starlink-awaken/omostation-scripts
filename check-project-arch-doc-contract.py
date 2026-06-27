@@ -12,7 +12,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+
+WORKSPACE = workspace_root()
 
 PROJECTS = (
     "agora",

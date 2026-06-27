@@ -9,7 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-WORKSPACE = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+
+WORKSPACE = workspace_root()
 
 TRUTH_TO_M1 = {
     ".omo/_truth/x1-governance-policies.yaml": "projects/ecos/src/ecos/ssot/mof/m1/governance/GOV-X1-CONSTRAINT.yaml",

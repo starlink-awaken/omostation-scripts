@@ -17,7 +17,10 @@ import sys
 from datetime import datetime, timedelta, UTC
 from pathlib import Path
 
-WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lib.bootstrap import workspace_root
+
+WORKSPACE_ROOT = workspace_root()
 
 
 def git_log_for_file(file_path: Path, days: int = 90) -> dict:

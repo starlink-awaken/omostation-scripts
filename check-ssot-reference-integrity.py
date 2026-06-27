@@ -9,17 +9,28 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+from lib.paths import (
+    OMO_DIR,
+    REGISTRY_DIR,
+    X1_POLICIES,
+    X2_FRESHNESS,
+    X3_VALUE,
+    X4_CONSISTENCY,
+    AUDITS_DIR,
+)
 
-REGISTRY = WORKSPACE / ".omo" / "_truth" / "registry" / "omo-governance-surfaces.yaml"
-X1 = WORKSPACE / ".omo" / "_truth" / "x1-governance-policies.yaml"
-X2 = WORKSPACE / ".omo" / "_truth" / "x2-freshness-rules.yaml"
-X3 = WORKSPACE / ".omo" / "_truth" / "x3-value-stack.yaml"
-X4 = WORKSPACE / ".omo" / "_truth" / "x4-consistency-rules.yaml"
+WORKSPACE = workspace_root()
+
+REGISTRY = REGISTRY_DIR / "omo-governance-surfaces.yaml"
+X1 = X1_POLICIES
+X2 = X2_FRESHNESS
+X3 = X3_VALUE
+X4 = X4_CONSISTENCY
 L0 = WORKSPACE / "projects" / "ecos" / "src" / "ecos" / "ssot" / "registry" / "L0-constraints.yaml"
-STANDARD = WORKSPACE / ".omo" / "standards" / "omo-governance-surfaces.md"
+STANDARD = OMO_DIR / "standards" / "omo-governance-surfaces.md"
 AGENTS = WORKSPACE / "AGENTS.md"
-OMO_INDEX = WORKSPACE / ".omo" / "INDEX.md"
+OMO_INDEX = OMO_DIR / "INDEX.md"
 PANORAMA = WORKSPACE / "docs" / "PANORAMA.md"
 
 CHAIN_PATHS = (

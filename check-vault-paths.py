@@ -26,6 +26,9 @@ import re
 import sys
 from pathlib import Path
 
+from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml
+
 try:
     import yaml
 except ImportError:
@@ -34,7 +37,7 @@ except ImportError:
 
 # ── SSOT 文件定位 ──────────────────────────────
 SSOT_CANDIDATES = [
-    Path(__file__).resolve().parents[1] / "protocols" / "vault-paths.yaml",  # omostation/protocols/
+    workspace_root() / "protocols" / "vault-paths.yaml",  # omostation/protocols/
     Path.home() / ".config" / "omostation" / "vault-paths.yaml",           # XDG
 ]
 
@@ -52,7 +55,7 @@ def load_ssot() -> dict:
     if not p:
         print(f"ERROR: vault-paths.yaml 不存在(查 {SSOT_CANDIDATES})", file=sys.stderr)
         sys.exit(2)
-    return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    return load_yaml(p) or {}
 
 
 # ── 路径解析 ──────────────────────────────────
@@ -153,7 +156,7 @@ PORT_TEST_PATTERNS = [
     r"/site-packages/", r"/__pycache__/", r"/\.git/",
 ]
 
-PORT_SSOT_PATH = Path(__file__).resolve().parents[1] / "protocols" / "port-registry.yaml"
+PORT_SSOT_PATH = workspace_root() / "protocols" / "port-registry.yaml"
 PORT_HARDCODED_TYPES = [
     r"port\s*[=:]\s*\d+",                # port=1234 / port: 1234
     r"port\s*int\s*=\s*\d+",            # port: int = 1234
@@ -171,7 +174,7 @@ def load_port_ssot() -> set[int]:
     """读 SSOT 端口集(治本:SSOT 来源单一)。"""
     if not PORT_SSOT_PATH.exists():
         return set()
-    data = yaml.safe_load(PORT_SSOT_PATH.read_text(encoding="utf-8")) or {}
+    data = load_yaml(PORT_SSOT_PATH) or {}
     return {int(p) for p in data.get("ports", {}).keys() if str(p).isdigit()}
 
 
@@ -211,14 +214,14 @@ def scan_for_port_hardcodes(root: Path = Path("projects/")) -> list[tuple[Path, 
 # 历史: 子模块内部已有端口硬编码 (kairon 8765 / agora 8080 等) 属治理边界外.
 # baseline 锚定已知历史 → 增量 (新 file:port) 才 fail, 全景容忍.
 # DRY 对齐 omo-logs-audit baseline 模式 (.omo/_knowledge/_audit_baseline.json).
-PORT_BASELINE_PATH = Path(__file__).resolve().parents[1] / "protocols" / "port-hardcode-baseline.yaml"
+PORT_BASELINE_PATH = workspace_root() / "protocols" / "port-hardcode-baseline.yaml"
 
 
 def load_port_baseline() -> set[str]:
     """读 baseline 锚点. 返回 {relpath:port} 集合; 文件不存在则空集 (全景严格模式)."""
     if not PORT_BASELINE_PATH.exists():
         return set()
-    data = yaml.safe_load(PORT_BASELINE_PATH.read_text(encoding="utf-8")) or {}
+    data = load_yaml(PORT_BASELINE_PATH) or {}
     return set(data.get("entries", []))
 
 

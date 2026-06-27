@@ -4,8 +4,10 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+from lib.bootstrap import workspace_root
 
-ROOT = Path(__file__).resolve().parents[1]
+
+ROOT = workspace_root()
 DESIGN_ROOT = ROOT / ".omo/_knowledge/design"
 
 RISKY_PHRASES = (

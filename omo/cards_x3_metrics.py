@@ -19,7 +19,10 @@ from collections import Counter
 from datetime import datetime, UTC
 from pathlib import Path
 
-WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lib.bootstrap import workspace_root
+
+WORKSPACE_ROOT = workspace_root()
 
 # 默认 card_history db 路径 (cockpit 数据)
 DEFAULT_DB_PATHS = [

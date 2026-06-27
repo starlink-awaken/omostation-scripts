@@ -17,7 +17,9 @@ import re
 import sys
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+
+WORKSPACE = workspace_root()
 
 TARGETS = (
     WORKSPACE / "AGENTS.md",

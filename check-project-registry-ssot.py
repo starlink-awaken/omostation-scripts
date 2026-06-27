@@ -14,7 +14,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+
+WORKSPACE = workspace_root()
 PROJECTS = WORKSPACE / ".omo" / "PROJECTS.yaml"
 AGENTS = WORKSPACE / "AGENTS.md"
 PANORAMA = WORKSPACE / "docs" / "PANORAMA.md"

@@ -4,8 +4,10 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+from lib.bootstrap import workspace_root
 
-ROOT = Path(__file__).resolve().parents[1]
+
+ROOT = workspace_root()
 
 TARGETS = {
     ".omo/_knowledge/summaries/phase17/phase17-closeout.md": (

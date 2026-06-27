@@ -9,9 +9,12 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+from lib.paths import REGISTRY_DIR
+
+WORKSPACE = workspace_root()
 OMO_PATHS = WORKSPACE / "projects/omo/src/omo/omo_paths.py"
-REGISTRY = WORKSPACE / ".omo/_truth/registry/omo-governance-surfaces.yaml"
+REGISTRY = REGISTRY_DIR / "omo-governance-surfaces.yaml"
 
 EXPECTED = {
     ".omo/_truth/": "TRUTH_DIR",

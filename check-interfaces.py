@@ -14,7 +14,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[1]  # ~/Workspace/
+from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml
+
+WORKSPACE = workspace_root()
 PORT_REGISTRY = WORKSPACE / "protocols" / "port-registry.yaml"
 
 # ── 从 registry 加载已注册端口 ────────────────────────────
@@ -22,8 +25,7 @@ PORT_REGISTRY = WORKSPACE / "protocols" / "port-registry.yaml"
 def load_port_registry() -> dict[int, str]:
     """加载 port-registry.yaml 中的端口分配。"""
     try:
-        import yaml
-        data = yaml.safe_load(PORT_REGISTRY.read_text(encoding="utf-8"))
+        data = load_yaml(PORT_REGISTRY)
         return data.get("ports", {}) if data else {}
     except Exception:
         return {}
@@ -82,9 +84,8 @@ PORT_REFERENCE_PATTERNS = [
 def load_port_conflicts_resolved() -> dict[int, list[str]]:
     """加载注册表已裁决的端口冲突白名单(governance 拍板过的项目组合)。"""
     try:
-        import yaml
         reg = WORKSPACE / "protocols" / "port-registry.yaml"
-        data = yaml.safe_load(reg.read_text(encoding="utf-8")) or {}
+        data = load_yaml(reg) or {}
         return {int(p): list(projs) for p, projs in (data.get("conflicts_resolved") or {}).items()}
     except Exception:
         return {}
