@@ -320,7 +320,9 @@ exit_summary
 | Step 5 | 提取 validators/ssot_checker/cost_tracker | ✅ 完成 | 3 个可复用 lib/ 模块 |
 | Step 6 | 消除所有裸 yaml.safe_load (11 处) | ✅ 完成 | 全部走 lib/yaml_utils |
 | Step 7 | 清理 dead imports (3 处) | ✅ 完成 | lint-opc-carriers, check-state-goals, cost_track_org |
-| Step 8 | omo_worker.py 拆分评估 | 待定 | 1822 行 → 按域拆分 |
+| Step 8 | 100% 迁移 + setup_omo_src + ci_local lint | ✅ 完成 | 95/95 (100%), 12 处 sys.path.insert → 0 |
+| Step 9 | lib/ 单元测试 | ✅ 完成 | 7 模块 105 tests, 0.10s |
+| Step 10 | omo_worker.py 拆分 | 不做 | omo 项目自渐进拆分, 等 thin wrapper 化 |
 
 ### 量化指标
 
@@ -332,11 +334,45 @@ exit_summary
 | shell 颜色 helper 重复 | 7 处 | 0 (全 source common.sh) | ✅ 0 |
 | 裸 `yaml.safe_load` | 12 处 | 0 (全走 lib/yaml_utils) | ✅ 0 |
 | 裸 `import yaml` (无 lib) | 12 处 | 0 | ✅ 0 |
-| lib/ 依赖脚本数 | 0 | 71 | ✅ 75%+ |
+| lib/ 依赖脚本数 | 0 | 95 (100%) | ✅ 100% |
+| lib/ 单元测试 | 0 | 105 (7 模块) | ✅ 105 tests |
 
 ---
 
-## 11. 约束与风险
+## 11. 测试
+
+### lib/ 单元测试
+
+`tests/lib/` 覆盖 lib/ 全部 7 个 Python 模块 (shell/common.sh 用 bash -n + 功能测试覆盖):
+
+```bash
+# 运行全部 lib/ 测试
+python3 -m pytest tests/lib/ -v
+
+# 运行单个模块
+python3 -m pytest tests/lib/test_validators.py -v
+```
+
+| 测试文件 | 测试数 | 覆盖模块 |
+|---------|--------|---------|
+| `test_bootstrap.py` | 8 | workspace_root, omo_src_path, setup_omo_src |
+| `test_paths.py` | 11 | 路径常量存在性 + 层级关系 |
+| `test_yaml_utils.py` | 18 | load_yaml, load_yaml_multi, write_yaml_atomic, load_yaml_or_default |
+| `test_validators.py` | 21 | LintReport, require_*, match_pattern_list |
+| `test_ssot_checker.py` | 20 | SSOTChecker require/forbid/check_targets |
+| `test_cost_tracker.py` | 14 | CostTracker log_call, summary_by_org, schema, context manager |
+| `test_cli.py` | 6 | BaseParser 默认/自定义参数 |
+
+### CI 集成
+
+`ci_local.sh` step 0 自动检查新脚本是否使用 lib/:
+```bash
+bash ci_local.sh  # 跑 step 0 (lib/ 检查) + step 1-9 (kairon/omo CI)
+```
+
+---
+
+## 12. 约束与风险
 
 | 约束 | 说明 |
 |------|------|

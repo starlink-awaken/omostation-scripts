@@ -191,6 +191,8 @@
 
 | 目录 | 文件数 | 用途 |
 |------|--------|------|
+| `lib/` | 9 | 共享基础设施 (bootstrap, paths, yaml_utils, cli, validators, ssot_checker, cost_tracker, shell/common.sh) |
+| `tests/` | 9 | 单元测试 (lib/ 7 模块 105 tests + omo/ 2 脚本) |
 | `omo/` | 10 | OMO 治理脚本 (governance-agent.sh, omo_worker.py 78KB, x1/x2/x3 审计, cron 安装) |
 | `shell/` | 9 | Shell 工具 (backup, restore, bridge install, watchdog, system consistency) |
 | `install/` | 1 | 安装向导 (setup.sh) |

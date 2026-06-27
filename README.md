@@ -9,6 +9,7 @@
 ```
 scripts/
 ├── lib/         ── 共享基础设施 (9 模块: bootstrap, paths, yaml_utils, cli, validators, ssot_checker, cost_tracker, shell/common.sh)
+├── tests/       ── 单元测试 (lib/ 7 模块 105 tests + omo/ 2 脚本)
 ├── omo/         ── OMO 治理脚本 (governance-agent, omo_worker, x1/x2/x3 审计)
 ├── shell/       ── Shell 工具 (backup, restore, bridge install, watchdog)
 ├── install/     ── 安装向导 (setup.sh)
@@ -22,6 +23,16 @@ scripts/
 ```bash
 cd ~/Workspace
 git submodule update --init scripts/
+```
+
+## 测试
+
+```bash
+# lib/ 单元测试 (7 模块 105 tests, 0.10s)
+python3 -m pytest tests/lib/ -v
+
+# 本地 CI 冒烟 (含 lib/ 使用检查)
+bash ci_local.sh
 ```
 
 ## 共享基础设施 (lib/)

@@ -12,11 +12,11 @@ find . -maxdepth 1 -name '*.sh' -exec shellcheck {} +
 # 查看分类索引
 cat INDEX.md
 
-# 本地 CI 冒烟
+# 本地 CI 冒烟 (含 lib/ 使用检查)
 bash ci_local.sh
 
-# 测试 lib/ 共享层
-python3 -c "from lib.bootstrap import workspace_root; print(workspace_root())"
+# lib/ 单元测试 (7 模块 105 tests)
+python3 -m pytest tests/lib/ -v
 ```
 
 ## 目录结构
@@ -24,6 +24,7 @@ python3 -c "from lib.bootstrap import workspace_root; print(workspace_root())"
 ```
 scripts/
 ├── lib/         ── 共享基础设施 (9 模块: bootstrap, paths, yaml_utils, cli, validators, ssot_checker, cost_tracker, shell/common.sh)
+├── tests/       ── 单元测试 (lib/ 7 模块 105 tests + omo/ 2 脚本)
 ├── (顶层)      ── 95 个脚本, 按命名前缀分类 (见 INDEX.md)
 ├── omo/        ── OMO 治理脚本 (governance-agent, omo_worker, x1/x2/x3 审计)
 ├── shell/      ── Shell 工具 (backup, restore, bridge install, watchdog)

@@ -28,6 +28,16 @@ else
 fi
 echo ""
 
+# 0b. lib/ 单元测试
+echo "0b. lib/ 单元测试 (7 模块 105 tests)..."
+cd "$REPO_ROOT/scripts"
+if python3 -m pytest tests/lib/ -q 2>&1 | tail -3; then
+    pass "lib/ 单元测试全通过"
+else
+    fail "lib/ 单元测试失败"
+fi
+echo ""
+
 # 1. ruff check (新文件)
 echo "1. ruff check kairon 包 (新增/修改文件)..."
 if [ -d "$REPO_ROOT/projects/kairon" ]; then
