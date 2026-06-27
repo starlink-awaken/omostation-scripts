@@ -3,9 +3,8 @@
 #
 # 用法: bash scripts/install-cron.sh
 
-set -euo pipefail
+source "$(dirname "$0")/lib/shell/common.sh"
 
-REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 CRON_FILE="$REPO_ROOT/.omo/cron/governance-crontab"
 
 echo "=== 安装治理检查 Cron ==="

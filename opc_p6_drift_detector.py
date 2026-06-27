@@ -15,8 +15,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from lib.bootstrap import workspace_root
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = workspace_root()
 if not (ROOT / "projects").exists():
     override = __import__("os").environ.get("OPC_ROOT")
     if override:

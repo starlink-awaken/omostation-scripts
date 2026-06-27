@@ -13,7 +13,8 @@ import sys
 from pathlib import Path
 
 # Setup paths
-ROOT = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+ROOT = workspace_root()
 sys.path.insert(0, str(ROOT / "projects" / "agora" / "src"))
 
 async def run_experiment():

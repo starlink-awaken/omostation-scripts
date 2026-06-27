@@ -11,8 +11,10 @@ from datetime import datetime
 import os
 from pathlib import Path
 
-workspace_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(workspace_root / "projects" / "kairon" / "packages" / "kos" / "src"))
+from lib.bootstrap import workspace_root
+
+WORKSPACE = workspace_root()
+sys.path.insert(0, str(WORKSPACE / "projects" / "kairon" / "packages" / "kos" / "src"))
 
 from kos.adapters.memtheta_adapter import memtheta_adapter
 

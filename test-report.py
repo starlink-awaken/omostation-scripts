@@ -10,8 +10,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from lib.bootstrap import workspace_root
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = workspace_root()
 
 
 def ensure_rich() -> None:

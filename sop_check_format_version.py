@@ -17,6 +17,8 @@ import json
 import sys
 from pathlib import Path
 
+from lib.bootstrap import workspace_root
+
 # ── 已知的 MCP server 文件（默认回退，当 convergence.yaml 不存在时使用） ──
 KNOWN_MCP_FILES = [
     "projects/kairon/packages/agora/src/agora/server/mcp.py",
@@ -30,8 +32,8 @@ KNOWN_MCP_FILES = [
 
 
 def _find_workspace_root() -> Path:
-    """从脚本所在位置往上一级找 workspace 根目录"""
-    return Path(__file__).resolve().parent.parent
+    """返回 workspace 根目录"""
+    return workspace_root()
 
 
 # ── B: 从 convergence.yaml 动态发现 MCP 文件 ──────────────────────

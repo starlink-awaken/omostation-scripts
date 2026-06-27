@@ -13,8 +13,9 @@
 #   OPC_MODE (weekly/monthly/pre-release) — 模式标识
 set -euo pipefail
 
-WORKSPACE="${WORKSPACE:-/Users/xiamingxing/Workspace}"
-cd "$WORKSPACE"
+source "$(dirname "$0")/lib/shell/common.sh"
+
+cd "$REPO_ROOT"
 
 # 1. 跑 mof-state-bridge --strict
 if ! python3 projects/ecos/src/ecos/ssot/tools/mof-state-bridge.py --strict > /tmp/mof-state-bridge-cron.json 2>&1; then
@@ -32,7 +33,7 @@ IN_SYNC="false"
 if [ "$M1_ONLY" = "0" ]; then IN_SYNC="true"; fi
 
 # 3. 写 5repos 兼容的 mof_state_bridge 字段
-OUT_DIR="$WORKSPACE/.omo/_delivery/audit-rollout"
+OUT_DIR="$REPO_ROOT/.omo/_delivery/audit-rollout"
 mkdir -p "$OUT_DIR"
 TODAY=$(date -u +%Y-%m-%d)
 STAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)

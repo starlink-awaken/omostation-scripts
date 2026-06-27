@@ -12,7 +12,9 @@ import sys
 import yaml
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+
+ROOT = workspace_root()
 
 def extract_bos_uris_from_md(file_path: Path) -> set[str]:
     """Extract all `bos://...` URIs from a markdown file."""

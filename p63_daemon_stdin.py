@@ -10,7 +10,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-KAIRON_ROOT = Path("/Users/xiamingxing/Workspace/projects/kairon")
+from lib.bootstrap import workspace_root
+
+KAIRON_ROOT = workspace_root() / "projects" / "kairon"
 PACKAGES = ["eidos", "iris", "kronos", "ontoderive"]
 PKG_DIR_MAP = {
     "eidos": "eidos",

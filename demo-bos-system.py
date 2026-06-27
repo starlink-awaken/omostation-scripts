@@ -11,7 +11,9 @@ eCOS v5 BOS URI System Demo
 import sys
 from pathlib import Path
 
-WS = Path(__file__).parent.parent
+from lib.bootstrap import workspace_root
+
+WS = workspace_root()
 sys.path.insert(0, str(WS / "projects" / "agora" / "src"))
 sys.path.insert(0, str(WS / "projects" / "ecos" / "src" / "ecos" / "ssot" / "tools"))
 

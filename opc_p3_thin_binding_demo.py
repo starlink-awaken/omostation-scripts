@@ -13,7 +13,8 @@ from typing import Any
 import yaml
 
 
-ROOT = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+ROOT = workspace_root()
 OMO_SRC = ROOT / "projects" / "omo" / "src"
 if str(OMO_SRC) not in sys.path:
     sys.path.insert(0, str(OMO_SRC))

@@ -13,7 +13,8 @@ from pathlib import Path
 from datetime import UTC, datetime
 
 # Setup paths
-ROOT = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+ROOT = workspace_root()
 sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
 sys.path.insert(0, str(ROOT / "projects" / "cockpit" / "web"))
 

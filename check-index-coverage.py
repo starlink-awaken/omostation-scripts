@@ -21,6 +21,8 @@ import argparse
 import re
 from pathlib import Path
 
+from lib.paths import OMO_DIR
+
 # 忽略的目录模式 — 这些目录下的文件不属于 INDEX.md 覆盖范围
 IGNORE_PREFIXES = (
     ".omo/backups/",
@@ -172,7 +174,7 @@ def _scan_omo_files(omo_dir: Path) -> set[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check INDEX.md coverage")
-    parser.add_argument("--index", default=".omo/INDEX.md", help="Path to INDEX.md")
+    parser.add_argument("--index", default=str(OMO_DIR / "INDEX.md"), help="Path to INDEX.md")
     args = parser.parse_args()
 
     index_path = Path(args.index)

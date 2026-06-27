@@ -12,6 +12,9 @@ from pathlib import Path
 
 import yaml
 
+from lib.bootstrap import workspace_root
+from lib.yaml_utils import load_yaml
+
 
 REQUIRED_FIELDS = ["name", "version", "category", "status", "description"]
 ALLOWED_STATUSES = {"active", "draft", "deprecated", "planned", "partial"}
@@ -21,7 +24,7 @@ ALLOWED_CATEGORIES = {
     "runtime-management", "governance",
 }
 
-REPO_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = workspace_root()
 REGISTRY = REPO_ROOT / "projects" / "runtime" / "protocols" / "L0-registry.yaml"
 
 
@@ -31,8 +34,7 @@ def main() -> int:
         print(f"❌ Registry not found: {REGISTRY}")
         return 1
 
-    with open(REGISTRY) as f:
-        data = yaml.safe_load(f)
+    data = load_yaml(REGISTRY)
 
     protocols = data.get("protocols", [])
     if not isinstance(protocols, list):

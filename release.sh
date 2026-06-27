@@ -15,11 +15,10 @@
 #
 # See ADR-0007.
 
-set -euo pipefail
+source "$(dirname "$0")/lib/shell/common.sh"
 
-WORKSPACE="${WORKSPACE:-$(cd "$(dirname "$0")/.." && pwd)}"
-VERSION_FILE="$WORKSPACE/VERSION"
-CHANGELOG="$WORKSPACE/CHANGELOG.md"
+VERSION_FILE="$REPO_ROOT/VERSION"
+CHANGELOG="$REPO_ROOT/CHANGELOG.md"
 PROJECTS=(agora kairon gbrain omo metaos cockpit runtime)
 BUMP="${1:-patch}"
 DRY=false
@@ -59,7 +58,7 @@ echo "VERSION -> $NEW_VERSION"
 
 # 2. 同步各项目 __version__.py (POC: 仅 kairon + omo, 物理存在源码)
 for proj in kairon omo; do
-    version_file="$WORKSPACE/projects/$proj/src/${proj}/__version__.py"
+    version_file="$REPO_ROOT/projects/$proj/src/${proj}/__version__.py"
     if [ -f "$version_file" ]; then
         cat > "$version_file" <<EOF
 """$proj version - 引用 omostation 工作区统一版本.
@@ -114,7 +113,7 @@ echo "CHANGELOG.md updated with [$NEW_VERSION]"
 # 4. 提示手动 git 操作
 echo ""
 echo "=== Next steps (manual) ==="
-echo "  cd $WORKSPACE"
+echo "  cd $REPO_ROOT"
 echo "  git add VERSION CHANGELOG.md projects/*/src/*/__version__.py"
 echo "  git commit -m 'release: v$NEW_VERSION'"
 echo "  git tag v$NEW_VERSION"

@@ -3,9 +3,8 @@
 # 用途: 每日 cron, 核心项目跑测试, 其余跑 lint + git
 # 用法: bash scripts/health_scan.sh
 
-set -euo pipefail
+source "$(dirname "$0")/lib/shell/common.sh"
 
-WS="$HOME/Workspace"
 RESULTS=()
 TIMEOUT=120  # seconds per test
 
@@ -20,7 +19,7 @@ printf "|%s|%s|%s|%s|%s|\n" "$(printf '%.0s-' {1..22})" "$(printf '%.0s-' {1..17
 
 scan() {
   local dir="$1" label="$2" src="$3" test_path="$4"
-  local proj="$WS/projects/$dir"
+  local proj="$REPO_ROOT/projects/$dir"
   local test_result="-" lint_result="✅" git_result="clean"
 
   # Git

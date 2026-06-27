@@ -18,7 +18,10 @@ from pathlib import Path
 from datetime import UTC, datetime
 
 # Setup paths to include all core modules
-ROOT = Path(__file__).resolve().parents[1]
+from lib.bootstrap import workspace_root
+
+# Setup paths to include all core modules
+ROOT = workspace_root()
 sys.path.insert(0, str(ROOT / "projects" / "agora" / "src"))
 sys.path.insert(0, str(ROOT / "projects" / "runtime" / "src"))
 sys.path.insert(0, str(ROOT / "projects" / "aetherforge" / "packages" / "gateway" / "src"))

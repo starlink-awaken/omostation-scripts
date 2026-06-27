@@ -21,6 +21,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from lib.bootstrap import workspace_root
+
 # ── 已知的 MCP server 文件（与 sop_check_format_version.py 同步） ──
 KNOWN_MCP_FILES = [
     "projects/kairon/packages/agora/src/agora/server/mcp.py",
@@ -34,7 +36,7 @@ KNOWN_MCP_FILES = [
 
 
 def _find_workspace_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+    return workspace_root()
 
 
 def _gather_files(targets: list[str]) -> list[Path]:

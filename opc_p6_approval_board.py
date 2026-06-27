@@ -5,9 +5,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from lib.bootstrap import workspace_root, omo_src_path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
+ROOT = workspace_root()
+sys.path.insert(0, str(omo_src_path()))
 
 from omo.omo_approval_board import build_approval_board, write_approval_board
 

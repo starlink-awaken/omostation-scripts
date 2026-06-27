@@ -6,8 +6,9 @@
 #   - manual 调用                                                  → 强制 OPC_TRIGGER=manual
 set -euo pipefail
 
-WORKSPACE="${WORKSPACE:-/Users/xiamingxing/Workspace}"
-cd "$WORKSPACE"
+source "$(dirname "$0")/lib/shell/common.sh"
+
+cd "$REPO_ROOT"
 
 if [ -z "${OPC_TRIGGER:-}" ]; then
     if [ "${INVOCATION_ID:-}" = "cron" ]; then

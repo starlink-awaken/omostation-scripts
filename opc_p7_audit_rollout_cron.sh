@@ -15,10 +15,11 @@
 #   0 3 1 * * INVOCATION_ID=cron OPC_TRIGGER=cron OPC_MODE=monthly /Users/xiamingxing/Workspace/scripts/opc_p7_audit_rollout_cron.sh
 set -euo pipefail
 
-WORKSPACE="${WORKSPACE:-/Users/xiamingxing/Workspace}"
+source "$(dirname "$0")/lib/shell/common.sh"
+
 OPC_MODE="${OPC_MODE:-weekly}"
 
-cd "$WORKSPACE"
+cd "$REPO_ROOT"
 
 if [ -z "${OPC_TRIGGER:-}" ]; then
     if [ "${INVOCATION_ID:-}" = "cron" ]; then

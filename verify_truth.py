@@ -12,8 +12,10 @@ import sys
 import time
 from pathlib import Path
 
+from lib.bootstrap import workspace_root
+
 # Setup paths
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = workspace_root()
 sys.path.insert(0, str(ROOT / "projects" / "agora" / "src"))
 sys.path.insert(0, str(ROOT / "projects" / "cockpit" / "web"))
 sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))

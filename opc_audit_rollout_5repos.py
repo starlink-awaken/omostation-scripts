@@ -20,8 +20,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from lib.bootstrap import workspace_root
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = workspace_root()
 
 
 REPOS = [

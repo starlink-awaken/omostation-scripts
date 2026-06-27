@@ -14,10 +14,11 @@
 # 显式 override: 调用方设 OPC_TRIGGER=cron 仍透传, 不被覆盖.
 set -euo pipefail
 
-WORKSPACE="${WORKSPACE:-/Users/xiamingxing/Workspace}"
+source "$(dirname "$0")/lib/shell/common.sh"
+
 OPC_RELEASE_CUTOFF="${OPC_RELEASE_CUTOFF:-7 days ago}"
 
-cd "$WORKSPACE"
+cd "$REPO_ROOT"
 
 # 触发源判定:
 #   1. 若调用方已显式设置 OPC_TRIGGER, 透传 (优先级最高)
