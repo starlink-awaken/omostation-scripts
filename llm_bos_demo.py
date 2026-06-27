@@ -18,10 +18,10 @@ import os
 import sys
 from pathlib import Path
 
-# 路径
-WORKSPACE = "/Users/xiamingxing/Workspace"
-sys.path.insert(0, f"{WORKSPACE}/projects/omo/src")
-sys.path.insert(0, f"{WORKSPACE}/projects/agora/src")
+from lib.bootstrap import workspace_root, setup_omo_src
+
+WORKSPACE = workspace_root()
+setup_omo_src(WORKSPACE / "projects" / "agora" / "src")
 
 from omo.omo_llm_bos_bridge import (  # noqa: E402
     bos_uri_tool_schema,

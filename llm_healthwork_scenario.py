@@ -21,8 +21,9 @@ import os
 import sys
 from pathlib import Path
 
-# ── PYTHONPATH 注入 (omo + agora) ──────────────────────────
-WORKSPACE = Path("/Users/xiamingxing/Workspace")
+from lib.bootstrap import workspace_root
+
+WORKSPACE = workspace_root()
 OMO_SRC = WORKSPACE / "projects" / "omo" / "src"
 AGORA_SRC = WORKSPACE / "projects" / "agora" / "src"
 for p in (str(OMO_SRC), str(AGORA_SRC)):

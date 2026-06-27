@@ -16,11 +16,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.bootstrap import workspace_root, omo_src_path
+from lib.bootstrap import workspace_root, setup_omo_src
 from lib.yaml_utils import load_yaml_or_default
 
 ROOT = workspace_root()
-sys.path.insert(0, str(omo_src_path()))
+setup_omo_src()
 
 from omo.omo_phase_gate import write_phase_gate_audit
 from omo.opc_phase_paths import PHASE_TASK_IDS, resolve_opc_phase_task_path

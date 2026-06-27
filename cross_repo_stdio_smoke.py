@@ -10,6 +10,13 @@ import json
 import sys
 from typing import Any
 
+from lib.bootstrap import workspace_root
+
+ROOT = workspace_root()
+for _p in (ROOT / "projects" / "omo" / "src", ROOT / "projects" / "agora" / "src"):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
 PASS = "✅"
 FAIL = "❌"
 results: list[tuple[str, str, str]] = []

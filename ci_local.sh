@@ -15,6 +15,19 @@ cd "$REPO_ROOT"
 echo "=== omostation 本地 CI 模拟 ==="
 echo ""
 
+# 0. lib/ usage check (新脚本必须用 lib/)
+echo "0. lib/ 使用检查 (新 Python 脚本必须 import lib.)..."
+LIB_VIOLATIONS=$(find "$REPO_ROOT/scripts" -maxdepth 1 -name '*.py' ! -name '__init__.py' ! -name 'gov_heartbeat.py' \
+    -exec grep -L 'from lib\.' {} \; 2>/dev/null || true)
+if [ -n "$LIB_VIOLATIONS" ]; then
+    warn "以下脚本未使用 lib/:"
+    echo "$LIB_VIOLATIONS" | sed 's/^/    /'
+    warn "新脚本必须 import lib.bootstrap 或其他 lib/ 模块"
+else
+    pass "所有 Python 脚本 (excl __init__/deprecated) 已使用 lib/"
+fi
+echo ""
+
 # 1. ruff check (新文件)
 echo "1. ruff check kairon 包 (新增/修改文件)..."
 if [ -d "$REPO_ROOT/projects/kairon" ]; then

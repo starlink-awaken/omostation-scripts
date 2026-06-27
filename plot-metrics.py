@@ -12,10 +12,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from lib.bootstrap import workspace_root, omo_src_path
+from lib.bootstrap import workspace_root, setup_omo_src
 
 WORKSPACE_ROOT = workspace_root()
-sys.path.insert(0, str(omo_src_path()))
+setup_omo_src()
 
 from omo.omo_io import write_text_atomic
 from omo.omo_metrics_plot import write_metrics_trend

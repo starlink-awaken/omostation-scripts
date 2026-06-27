@@ -4,6 +4,8 @@
 import sys
 from pathlib import Path
 
+from lib.bootstrap import workspace_root
+
 
 def check_file(filepath: Path) -> bool:
     """Return True if file passes (has the import or is exempt)."""

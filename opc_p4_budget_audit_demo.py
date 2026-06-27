@@ -8,13 +8,13 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-from lib.bootstrap import workspace_root, omo_src_path
+from lib.bootstrap import workspace_root, setup_omo_src
 
 ROOT = workspace_root()
 RUNTIME_SRC = ROOT / "projects" / "runtime" / "src"
 LLM_GATEWAY_SRC = ROOT / "projects" / "llm-gateway" / "src"
 OMO_SRC = ROOT / "projects" / "omo" / "src"
-sys.path.insert(0, str(omo_src_path()))
+setup_omo_src()
 
 from omo.omo_demo_artifacts import (
     write_budget_audit_llm_sample,

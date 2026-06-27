@@ -14,9 +14,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from lib.bootstrap import workspace_root, omo_src_path
+from lib.bootstrap import workspace_root, setup_omo_src
 
-sys.path.insert(0, str(omo_src_path()))
+setup_omo_src()
 
 from omo.omo_governance_data import build_governance_data, write_governance_data
 

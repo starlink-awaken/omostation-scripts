@@ -56,7 +56,8 @@ def omo_src_path() -> Path:
     """返回 projects/omo/src 目录路径 (用于 sys.path.insert)。
 
     用法:
-        sys.path.insert(0, str(omo_src_path()))
+        from lib.bootstrap import setup_omo_src
+        setup_omo_src()
         from omo.omo_io import write_yaml_atomic
     """
     return workspace_root() / "projects" / "omo" / "src"
@@ -65,3 +66,19 @@ def omo_src_path() -> Path:
 def scripts_dir() -> Path:
     """返回 scripts/ 目录路径。"""
     return Path(__file__).resolve().parent.parent
+
+
+def setup_omo_src(*extra: str | Path) -> None:
+    """将 omo src 注入 sys.path, 供 L2 脚本 import omo.* 模块。
+
+    消除 20+ 处 `sys.path.insert(0, str(omo_src_path()))` 重复。
+
+    Args:
+        *extra: 额外要注入的路径 (如 agora src, runtime src 等)
+    """
+    import sys
+    paths = [omo_src_path(), *extra]
+    for p in paths:
+        p = str(p)
+        if p not in sys.path:
+            sys.path.insert(0, p)

@@ -17,10 +17,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from lib.bootstrap import workspace_root, omo_src_path
+from lib.bootstrap import workspace_root, setup_omo_src
 
 ROOT = workspace_root()
-sys.path.insert(0, str(omo_src_path()))
+setup_omo_src()
 
 from omo.omo_release_cycle import (
     gather_changes as _gather_changes_runtime,
