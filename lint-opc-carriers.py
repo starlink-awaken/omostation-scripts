@@ -35,13 +35,18 @@ from typing import Any
 
 import yaml
 
+from lib.bootstrap import workspace_root
+from lib.paths import OMO_DIR
+from lib.yaml_utils import load_yaml
+from lib.validators import LintReport, require_fields, require_list_min, match_pattern_list
+
 # --------------------------------------------------------------------------- #
 # 配置
 # --------------------------------------------------------------------------- #
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-PLANNED_DIR = REPO_ROOT / ".omo" / "tasks" / "planned"
-DONE_DIR = REPO_ROOT / ".omo" / "tasks" / "registry" / "done"
+REPO_ROOT = workspace_root()
+PLANNED_DIR = OMO_DIR / "tasks" / "planned"
+DONE_DIR = OMO_DIR / "tasks" / "registry" / "done"
 DOCS_DIR = REPO_ROOT / "docs"
 
 # 8 个治理载体 (5 yaml + 3 supporting context: P3.yaml + GATE-D-OPENING.yaml + 4 phase doc)
@@ -89,50 +94,29 @@ CROSS_PHASE_ALLOWED_PREFIXES = (
 # --------------------------------------------------------------------------- #
 
 
-class LintReport:
-    def __init__(self) -> None:
-        self.errors: list[tuple[str, str]] = []
-        self.warnings: list[tuple[str, str]] = []
-        self.checks: list[tuple[str, str]] = []
-
-    def err(self, where: str, msg: str) -> None:
-        self.errors.append((where, msg))
-
-    def warn(self, where: str, msg: str) -> None:
-        self.warnings.append((where, msg))
-
-    def ok(self, where: str, msg: str) -> None:
-        self.checks.append((where, msg))
-
-
 def _check_yaml_parsable(path: Path, report: LintReport) -> dict[str, Any] | None:
     try:
-        with path.open() as fh:
-            data = yaml.safe_load(fh)
+        data = load_yaml(path)
         if not isinstance(data, dict):
             report.err(str(path), "top-level must be a mapping")
             return None
         return data
-    except yaml.YAMLError as e:
+    except Exception as e:
         report.err(str(path), f"yaml parse error: {e}")
         return None
 
 
 def _check_required_fields(data: dict[str, Any], path: Path, report: LintReport) -> None:
-    required = ["id", "status", "priority", "domain", "created", "gate", "gate_status"]
-    for f in required:
-        if f not in data:
-            report.err(str(path), f"missing required field: {f}")
+    require_fields(data, ["id", "status", "priority", "domain", "created", "gate", "gate_status"], str(path), report)
 
 
 def _check_sub_gates(data: dict[str, Any], path: Path, report: LintReport) -> None:
-    # P3 用 tasks[] 描述 D1-D5, P4-P7 用 sub_gates[]; 至少一个存在且 ≥3
     sub = data.get("sub_gates") or data.get("tasks")
     if not isinstance(sub, list):
         report.err(str(path), "sub_gates (or tasks) must be a list")
         return
     if len(sub) < 3:
-        report.err(str(path), f"sub_gates/tasks count = {len(sub)} (need ≥3)")
+        report.err(str(path), f"sub_gates/tasks count = {len(sub)} (need >= 3)")
         return
     for sg in sub:
         if "status" not in sg:
@@ -145,37 +129,22 @@ def _check_sub_gates(data: dict[str, Any], path: Path, report: LintReport) -> No
 
 
 def _check_signals(data: dict[str, Any], path: Path, report: LintReport) -> None:
-    sigs = data.get("signals")
-    if not isinstance(sigs, list):
-        report.err(str(path), "signals must be a list")
-        return
-    if len(sigs) < 4:
-        report.err(str(path), f"signals count = {len(sigs)} (need ≥4)")
-    for s in sigs:
-        if not isinstance(s, str) or not SIGNAL_RE.match(s):
-            report.err(str(path), f"signal '{s}' violates naming rule")
+    sigs = require_list_min(data, "signals", 4, str(path), report)
+    if sigs is not None:
+        match_pattern_list(sigs, SIGNAL_RE, "signal", str(path), report)
 
 
 def _check_forbidden_claims(data: dict[str, Any], path: Path, report: LintReport) -> None:
-    fcs = data.get("forbidden_claims")
-    if not isinstance(fcs, list):
-        report.err(str(path), "forbidden_claims must be a list")
-        return
-    if len(fcs) < 3:
-        report.err(str(path), f"forbidden_claims count = {len(fcs)} (need ≥3)")
-    for fc in fcs:
-        for hint in FORBIDDEN_CLAIM_HINTS:
-            if hint.search(fc):
-                report.err(str(path), f"forbidden_claim '{fc}' contains blacklisted phrase")
+    fcs = require_list_min(data, "forbidden_claims", 3, str(path), report)
+    if fcs is not None:
+        for fc in fcs:
+            for hint in FORBIDDEN_CLAIM_HINTS:
+                if hint.search(fc):
+                    report.err(str(path), f"forbidden_claim '{fc}' contains blacklisted phrase")
 
 
 def _check_red_lines(data: dict[str, Any], path: Path, report: LintReport) -> None:
-    rls = data.get("red_lines")
-    if not isinstance(rls, list):
-        report.err(str(path), "red_lines must be a list")
-        return
-    if len(rls) < 3:
-        report.err(str(path), f"red_lines count = {len(rls)} (need ≥3)")
+    require_list_min(data, "red_lines", 3, str(path), report)
 
 
 def _check_readiness(data: dict[str, Any], path: Path, report: LintReport) -> None:
@@ -294,29 +263,10 @@ def main(argv: list[str]) -> int:
     _check_cross_yaml_prereqs(carriers_data, report)
 
     # 输出
-    print("=" * 70)
-    print(f" OPC Carriers Lint — {len(CARRIERS)} carriers")
-    print("=" * 70)
-    for where, msg in report.checks:
-        if verbose:
-            print(f"  ✓ {where} — {msg}")
-    for where, msg in report.warnings:
-        print(f"  ⚠ {where} — {msg}")
-    for where, msg in report.errors:
-        print(f"  ✗ {where} — {msg}")
-    print("-" * 70)
-    n_err = len(report.errors)
-    n_warn = len(report.warnings)
-    print(f" Errors: {n_err}   Warnings: {n_warn}")
-    print("=" * 70)
-    if n_err:
-        print(" FAIL")
-        return 1
-    if strict and n_warn:
-        print(" FAIL (strict)")
-        return 1
-    print(" PASS")
-    return 0
+    report.print_summary(f"OPC Carriers Lint — {len(CARRIERS)} carriers", verbose=verbose)
+    code = report.exit_code(strict=strict)
+    print(" FAIL" if code else " PASS")
+    return code
 
 
 if __name__ == "__main__":
