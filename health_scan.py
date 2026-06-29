@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -65,7 +64,7 @@ def scan_project(proj: dict) -> dict:
 
     # ── Git status ────────────────────────────────────
     g = _run(["git", "status", "--porcelain"], cwd=proj_dir, timeout=10)
-    changed = [l for l in g["stdout"].splitlines() if l.strip()]
+    changed = [line for line in g["stdout"].splitlines() if line.strip()]
     result["git"]["uncommitted"] = len(changed)
     result["git"]["branch"] = _run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=proj_dir, timeout=5
@@ -82,7 +81,7 @@ def scan_project(proj: dict) -> dict:
         t = {"ok": True, "stdout": "no tests configured"}
 
     # Parse pytest output: "N passed, M failed, K skipped"
-    last_line = [l for l in t["stdout"].splitlines() if l.strip()][-1:] if t["stdout"] else []
+    last_line = [line for line in t["stdout"].splitlines() if line.strip()][-1:] if t["stdout"] else []
     result["tests"]["output"] = last_line[0] if last_line else t["stdout"][:100]
     result["tests"]["ok"] = t["ok"]
 
@@ -103,17 +102,17 @@ def scan_project(proj: dict) -> dict:
 
     # ── Ruff lint ─────────────────────────────────────
     if proj["src"]:
-        l = _run(["uv", "run", "ruff", "check", proj["src"], "--statistics"],
+        lint_result = _run(["uv", "run", "ruff", "check", proj["src"], "--statistics"],
                  cwd=proj_dir, timeout=30)
-        result["lint"]["ok"] = l["ok"]
-        lint_lines = [x for x in l["stdout"].splitlines() if x.strip()]
-        result["lint"]["errors"] = len(lint_lines) if not l["ok"] else 0
+        result["lint"]["ok"] = lint_result["ok"]
+        lint_lines = [x for x in lint_result["stdout"].splitlines() if x.strip()]
+        result["lint"]["errors"] = len(lint_lines) if not lint_result["ok"] else 0
 
     return result
 
 
 def main():
-    print(f"# 跨项目健康报告\n")
+    print("# 跨项目健康报告\n")
     print(f"_生成时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}_\n")
 
     results = []
@@ -137,7 +136,6 @@ def main():
             lint_str = "—"
 
         git_str = "clean" if r["git"].get("uncommitted", 0) == 0 else f"{r['git']['uncommitted']}f"
-        branch = r["git"].get("branch", "")
 
         print(f"| {r['dir']:20s} | {r['label']:15s} | {tests_str:20s} | {lint_str:10s} | {git_str} |")
 
@@ -176,7 +174,7 @@ def main():
     os.makedirs(str(gov_log.parent), exist_ok=True)
     with open(str(gov_log), "a") as f:
         f.write(json.dumps(entry, sort_keys=True) + "\n")
-    print(f"_governance heartbeat written_")
+    print("_governance heartbeat written_")
 
 
 if __name__ == "__main__":

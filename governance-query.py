@@ -18,9 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 
-from lib.bootstrap import workspace_root
 from lib.paths import OMO_DIR
 
 
@@ -38,7 +36,7 @@ def load_governance_data() -> dict:
 def query_health(data: dict):
     """查询健康度"""
     gov = data.get("governance", {})
-    print(f"=== 健康度 ===")
+    print("=== 健康度 ===")
     print(f"  health_score: {gov.get('health_score', 0):.1f}")
     print(f"  health_score_raw: {gov.get('health_score_raw', 100):.0f}")
     print(f"  debt_weight: {gov.get('debt_weight', 0):.2f}")
@@ -48,7 +46,7 @@ def query_health(data: dict):
 def query_debt(data: dict):
     """查询债务状态"""
     debt = data.get("debt", {})
-    print(f"=== 债务状态 ===")
+    print("=== 债务状态 ===")
     print(f"  resolved: {debt.get('resolved_count', 0)}")
     print(f"  unresolved: {debt.get('unresolved_count', 0)}")
     print(f"  total: {debt.get('total_count', 0)}")
@@ -58,7 +56,7 @@ def query_debt(data: dict):
 def query_trend(data: dict):
     """查询趋势"""
     trend = data.get("trend", [])
-    print(f"=== 趋势 ===")
+    print("=== 趋势 ===")
     print(f"  {'日期':<12} {'权重':<10} {'健康度':<10}")
     print(f"  {'─'*12} {'─'*10} {'─'*10}")
     for item in trend:
@@ -68,7 +66,7 @@ def query_trend(data: dict):
 def query_projects(data: dict):
     """查询项目状态"""
     projects = data.get("projects", {})
-    print(f"=== 项目状态 ===")
+    print("=== 项目状态 ===")
     print(f"  {'项目':<12} {'状态':<10} {'债务数':<10}")
     print(f"  {'─'*12} {'─'*10} {'─'*10}")
     for name, info in projects.items():

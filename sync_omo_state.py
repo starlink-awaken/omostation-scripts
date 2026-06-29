@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from lib.bootstrap import workspace_root, omo_src_path
-from lib.paths import OMO_DIR
 from lib.yaml_utils import load_yaml_multi
 
 WORKSPACE_ROOT = workspace_root()

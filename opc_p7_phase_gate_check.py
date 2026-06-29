@@ -23,7 +23,7 @@ ROOT = workspace_root()
 setup_omo_src()
 
 from omo.omo_phase_gate import write_phase_gate_audit
-from omo.opc_phase_paths import PHASE_TASK_IDS, resolve_opc_phase_task_path
+from omo.opc_phase_paths import resolve_opc_phase_task_path
 
 
 PHASES = [

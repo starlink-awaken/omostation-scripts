@@ -90,7 +90,6 @@ def main() -> int:
 def _run_mof_state_bridge_cron() -> None:
     """P5 增强: cron 跑完后跑 mof-state-bridge --strict 写 5repos 兼容字段."""
     import subprocess
-    today = datetime.now(UTC).strftime("%Y-%m-%d")
     stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     result = subprocess.run(
         ["python3", "projects/ecos/src/ecos/ssot/tools/mof-state-bridge.py",

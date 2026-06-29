@@ -8,7 +8,6 @@ Checks:
 - Category values are in allowed set
 """
 import sys
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 from lib.yaml_utils import load_yaml

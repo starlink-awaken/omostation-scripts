@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 from lib.paths import (
@@ -17,7 +15,6 @@ from lib.paths import (
     X2_FRESHNESS,
     X3_VALUE,
     X4_CONSISTENCY,
-    AUDITS_DIR,
 )
 
 WORKSPACE = workspace_root()

@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +37,6 @@ from omo.omo_weekly_loop import (
     update_loop_history as _update_loop_history_runtime,
     utc_now_iso as _now_iso_runtime,
     week_id as _week_id_runtime,
-    write_mof_state_bridge_snapshot,
     write_weekly_evidence,
 )
 

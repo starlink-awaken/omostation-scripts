@@ -1,7 +1,7 @@
 # scripts/INDEX.md — 分类索引
 
 > 全量脚本分类索引。新增脚本必须在此登记。
-> 最后更新: 2026-06-29 (归档 23 个历史/演示/废弃脚本到 archive/)
+> 最后更新: 2026-06-29 (再归档 6 个无引用脚本，顶层活跃脚本 66 个)
 
 ## 1. CI 治理检查 (`check-*.py`) — 25 个
 
@@ -40,7 +40,7 @@
 | `check-future-annotations.py` | 2026-06-19 | `from __future__ import annotations` 使用检查 |
 | `check-state-goals-alignment.py` | 2026-06-17 | state.yaml vs goals/current.yaml 对齐 (CI `state-goals-enforce.yml` 引用) |
 
-## 2. OPC 自动化 (`opc_*`) — 19 个
+## 2. OPC 自动化 (`opc_*`) — 17 个
 
 > 引用方: `docs/ASYNC-BUS-CRON-HOOK-GOVERNANCE-DEEPDIVE.md` cron 调度表, `.omo/_truth/registry/mutation-surfaces.yaml`, `.omo/standards/task-yaml-rules.md`
 
@@ -61,17 +61,22 @@
 | `opc_p7_release_cycle_cron.sh` | docs cron 表 | 发布周期 cron wrapper (周日 23:00) |
 | `opc_mof_state_bridge_cron.sh` | docs cron 表 | mof-state-bridge cron wrapper |
 | `opc_audit_rollout_5repos.py` | `.omo/standards/task-yaml-rules.md` | 5repos audit rollout |
+| `opc_section17_metrics.py` | docs cron 表 | §17 证据指标收集 |
 
 ### OPC 已收口/可能孤立
 
 | 脚本 | 最后修改 | 用途 |
 |------|---------|------|
-| `opc_p3_thin_binding_demo.py` | 2026-06-18 | P3 thin binding 演示 |
-| `opc_p4_budget_audit_demo.py` | docs opc | P4 budget audit 演示 |
 | `opc_p7_audit_rollout_cron.sh` | 2026-06-12 | P7 audit rollout cron wrapper |
 | `opc_p7_audit_rollout_daemon.py` | 2026-06-20 | P7 audit rollout daemon |
 | `opc_p7_phase_gate_check.py` | 2026-06-25 | P7 phase gate 检查 |
-| `opc_section17_metrics.py` | 2026-06-12 | §17 证据指标收集 |
+
+### OPC 已归档
+
+| 脚本 | 归档位置 | 用途 |
+|------|---------|------|
+| `opc_p3_thin_binding_demo.py` | `archive/opc_p3_thin_binding_demo.py` | P3 thin binding 演示 |
+| `opc_p4_budget_audit_demo.py` | `archive/opc_p4_budget_audit_demo.py` | P4 budget audit 演示 |
 
 ## 3. X 轴治理检查 (`x1-x4-*.sh`) — 5 个
 
@@ -124,31 +129,16 @@
 | `release.sh` | `.omo/standards/task-yaml-rules.md` | 发布脚本 |
 | `install-cron.sh` | docs cron 表 | cron 安装工具 |
 
-## 8. 其他活跃脚本 — 3 个
+## 8. 其他活跃脚本 — 4 个
 
 | 脚本 | 最后修改 | 用途 |
 |------|---------|------|
 | `validate_protocol_registry.py` | 2026-06-06 | 协议注册表校验 (CI `meta-model-check.yml` 引用) |
 | `lint-opc-carriers.py` | 2026-06-12 | OPC carriers lint |
-| `health_scan.py` / `health_scan.sh` | 2026-06-24 | 健康扫描 (可能 runtime 项目引用) |
+| `health_scan.py` / `health_scan.sh` | 2026-06-24 | 健康扫描 (runtime 项目引用) |
+| `cost_track_org.py` | 2026-06-03 | 成本跟踪 (`.omo/_truth/registry/projects-capabilities.yaml` 引用) |
 
-## 9. 历史/一次性脚本 — 8 个
-
-> 以下脚本未被任何 CI/Makefile/.omo/docs 引用。保留在顶层作为历史记录；
-> 如需清理，可在子模块 git 历史中回溯。
-
-| 脚本 | 最后修改 | 用途 |
-|------|---------|------|
-| `test-report.py` | 2026-05-24 | 测试报告生成 |
-| `plot-metrics.py` | 2026-06-20 | 指标绘图 |
-| `cost_track_org.py` | 2026-06-03 | 成本跟踪 |
-| `cross_repo_stdio_smoke.py` | 2026-06-08 | 跨仓 stdio 冒烟 |
-| `fix_missing_deliverables.py` | 2026-06-13 | 修复缺失交付物 |
-| `agent_doc_review_check.sh` | 2026-06-08 | Agent 文档审查检查 |
-| `perf-bos-baseline.sh` | 2026-06-07 | BOS 性能基线 |
-| `opc_section17_metrics.py` | 2026-06-12 | §17 指标 |
-
-## 10. 已归档脚本 (`archive/`)
+## 9. 已归档脚本 (`archive/`, 29 个)
 
 > 2026-06-29 从顶层迁移至此。这些脚本不再被 CI/Makefile/.omo/docs 引用，
 > 仅作为 git 历史可追溯的归档保留。
@@ -191,6 +181,17 @@
 | `check-port-registry.py` | 端口注册表检查 (被 `check-vault-paths.py` 取代) |
 | `gov_heartbeat.py` | 治理心跳 (已废弃, 被 `omo_gov_heartbeat.py` 取代) |
 
+### 历史工具脚本 (6)
+
+| 脚本 | 用途 |
+|------|------|
+| `agent_doc_review_check.sh` | Agent 文档审查检查 |
+| `cross_repo_stdio_smoke.py` | 跨仓 stdio 冒烟 |
+| `fix_missing_deliverables.py` | 修复缺失交付物 |
+| `perf-bos-baseline.sh` | BOS 性能基线 |
+| `plot-metrics.py` | 指标绘图 |
+| `test-report.py` | 测试报告生成 |
+
 ## 11. 子目录
 
 | 目录 | 文件数 | 用途 |
@@ -200,7 +201,7 @@
 | `omo/` | 10 | OMO 治理脚本 (governance-agent.sh, omo_worker.py 78KB, x1/x2/x3 审计, cron 安装) |
 | `shell/` | 9 | Shell 工具 (backup, restore, bridge install, watchdog, system consistency) |
 | `install/` | 1 | 安装向导 (setup.sh) |
-| `archive/` | 23 | 已归档的历史/演示/废弃脚本 |
+| `archive/` | 29 | 已归档的历史/演示/废弃脚本 + README |
 
 ### omo/ 详细
 

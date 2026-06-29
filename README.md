@@ -1,7 +1,7 @@
 # omostation-scripts
 
 > Omostation 工作站的运维脚本和自动化工具集合 (独立 git 子模块)。
-> 顶层 72 个活跃脚本 + 5 个子目录 (`lib/`, `omo/`, `shell/`, `install/`, `archive/`)。
+> 顶层 66 个活跃脚本 + 5 个子目录 (`lib/`, `omo/`, `shell/`, `install/`, `archive/`)。
 > 全量分类索引见 [INDEX.md](INDEX.md)，架构设计见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 目录结构
@@ -13,8 +13,8 @@ scripts/
 ├── omo/         ── OMO 治理脚本 (governance-agent, omo_worker, x1/x2/x3 审计)
 ├── shell/       ── Shell 工具 (backup, restore, bridge install, watchdog)
 ├── install/     ── 安装向导 (setup.sh)
-├── archive/     ── 已归档的历史/演示/废弃脚本 (23 个, 不再被 CI 引用)
-└── (顶层 72 个活跃脚本, 按前缀分类: check-*, opc_*, x1-x4-*, debt-*, 等)
+├── archive/     ── 已归档的历史/演示/废弃脚本 (29 个, 不再被 CI 引用)
+└── (顶层 66 个活跃脚本, 按前缀分类: check-*, opc_*, x1-x4-*, debt-*, 等)
 ```
 
 ## 用法

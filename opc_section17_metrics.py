@@ -30,7 +30,6 @@ import json
 import os
 import sys
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from lib.bootstrap import workspace_root
@@ -58,7 +57,6 @@ def _health_grade(debt_density: float) -> str:
 
 def metrics_for_workspace() -> dict[str, Any]:
     """workspace: 拉 .omo/state/system.yaml + .omo/debt/items/."""
-    state_path = ROOT / ".omo" / "state" / "system.yaml"
     debt_dir = ROOT / ".omo" / "debt" / "items"
     drift_count = 0
     total_records = 0

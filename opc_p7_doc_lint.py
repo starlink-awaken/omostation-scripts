@@ -14,10 +14,7 @@ P7-H4: 4 关键文档自动 lint (PANORAMA/ENTRY/JOURNEY/ROADMAP) + 跨文档术
 """
 from __future__ import annotations
 
-import json
 import sys
-from pathlib import Path
-from typing import Any
 
 from lib.bootstrap import workspace_root, setup_omo_src
 

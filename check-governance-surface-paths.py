@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import ast
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 from lib.paths import REGISTRY_DIR

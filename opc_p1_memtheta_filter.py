@@ -5,11 +5,8 @@ Runs the memory eviction and decay filter operator every night.
 """
 import sys
 import logging
-from datetime import datetime
 
 # Setup paths to import kairon packages
-import os
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 

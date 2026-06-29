@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — omostation-scripts
 
 > **scripts/** 独立 git 子模块 · omostation 工作站横切工具层
-> 版本: v1.1 | 2026-06-29
+> 版本: v1.2 | 2026-06-29
 > 全量脚本索引: [INDEX.md](INDEX.md) | 开发规范: [AGENTS.md](AGENTS.md)
 
 ---
@@ -22,7 +22,7 @@ omostation workspace
 ├── bin/               ← 工作区 CLI 入口 (workspace, verify, register-mcp...)
 ├── scripts/           ← 本项目: 横切工具层
 │   ├── lib/           ← L0 共享基础设施
-│   ├── (72 scripts)   ← L1/L2 功能域脚本
+│   ├── (66 scripts)   ← L1/L2 功能域脚本
 │   ├── omo/           ← OMO 治理脚本子目录
 │   ├── shell/         ← Shell 运维工具子目录
 │   ├── install/       ← 安装向导子目录
@@ -36,7 +36,7 @@ omostation workspace
 
 | # | 原则 | 说明 |
 |---|------|------|
-| 1 | **平铺保持** | 72 个活跃脚本平铺在顶层，CI/Makefile 路径不断。分类靠命名前缀，不靠子目录；23 个历史脚本移至 archive/ |
+| 1 | **平铺保持** | 66 个活跃脚本平铺在顶层，CI/Makefile 路径不断。分类靠命名前缀，不靠子目录；29 个历史脚本移至 archive/ |
 | 2 | **lib/ 唯一共享源** | 所有共享代码在 `lib/`。禁止在脚本间互相 import (omo_worker 例外) |
 | 3 | **命名即分类** | `check-*` = CI 门禁, `opc_*` = cron 自动化, `x[1-4]-*` = X 轴审计, 以此类推 |
 | 4 | **依赖单向** | `脚本 → lib → (可选) projects/omo/src`。禁止反向依赖 |
@@ -81,17 +81,17 @@ omostation workspace
 
 ## 4. 功能域模型
 
-scripts/ 的 72 个活跃脚本按业务能力划分为 **6 个功能域**：
+scripts/ 的 66 个活跃脚本按业务能力划分为 **6 个功能域**：
 
 ```
 ┌──────────────────────────────────────────────────┐
-│              scripts/ 功能域 (72 scripts)          │
+│              scripts/ 功能域 (66 scripts)          │
 ├──────────┬──────────┬──────────┬─────────────────┤
 │ CI Gates │ OPC Auto │ X-Axis   │ Governance Tools│
 │ 25       │ 17       │ 5        │ 4               │
 ├──────────┼──────────┼──────────┼─────────────────┤
 │ OMO Sync │ SOP/Util │          │                 │
-│ 3        │ 18       │          │                 │
+│ 3        │ 12       │          │                 │
 └──────────┴──────────┴──────────┴─────────────────┘
 ```
 
@@ -106,8 +106,8 @@ scripts/ 的 72 个活跃脚本按业务能力划分为 **6 个功能域**：
 | **X-Axis Audit** | `x[1-4]-*` | 5 | L1 | Makefile (`governance-check`) | lib/shell/common.sh |
 | **Governance Tools** | `debt-*`, `governance-*` | 4 | L1 | Makefile, CI `debt-audit.yml` | lib/shell/common.sh, lib/paths |
 | **OMO State Sync** | `sync_*`, `omo_*` | 3 | L2 | Makefile (`governance-sync`), .omo/_truth | lib/bootstrap, projects/omo/src |
-| **SOP/Utils** | `sop_*`, `validate_*`, `ci_local.sh`, `release.sh`, `health_scan.*`, `install-cron.sh`, etc. | 18 | L1 | CI, PR template, .omo/standards | lib/paths |
-| **Archive** | `archive/` | 23 | — | 无 (历史归档) | — |
+| **SOP/Utils** | `sop_*`, `validate_*`, `ci_local.sh`, `release.sh`, `health_scan.*`, `install-cron.sh`, `cost_track_org.py`, etc. | 12 | L1 | CI, PR template, .omo/standards | lib/paths |
+| **Archive** | `archive/` | 29 | — | 无 (历史归档) | — |
 
 ---
 
@@ -177,14 +177,14 @@ lib/
                     │     └─────────────┘
                     │
                     │ ┌────────────────────────────┐
-     PR template ───┼▶│  SOP/Utils (5)              │
+     PR template ───┼▶│  SOP/Utils (12)             │
      .omo/standards─┘ │  ci_local.sh · sop_* · ...   │
                       │  L1: lib/paths              │
                       └────────────────────────────┘
 
      (无引用)
                       ┌────────────────────────────┐
-                      │  Archive (23)              │
+                      │  Archive (29)              │
                       │  archive/                  │
                       │  历史/演示/废弃脚本        │
                       │  归档保留, 不维护          │
@@ -326,7 +326,7 @@ exit_summary
 | Step 7 | 清理 dead imports (3 处) | ✅ 完成 | lint-opc-carriers, check-state-goals, cost_track_org |
 | Step 8 | 100% 迁移 + setup_omo_src + ci_local lint | ✅ 完成 | 95/95 (100%), 12 处 sys.path.insert → 0 |
 | Step 9 | lib/ 单元测试 | ✅ 完成 | 7 模块 105 tests, 0.10s |
-| Step 10 | 归档历史/演示/废弃脚本 | ✅ 完成 | 23 个脚本移至 archive/，顶层剩 72 个活跃脚本 |
+| Step 10 | 归档历史/演示/废弃脚本 | ✅ 完成 | 29 个脚本移至 archive/，顶层剩 66 个活跃脚本 |
 | Step 11 | omo_worker.py 拆分 | 不做 | omo 项目自渐进拆分, 等 thin wrapper 化 |
 
 ### 量化指标
@@ -339,9 +339,9 @@ exit_summary
 | shell 颜色 helper 重复 | 7 处 | 0 (全 source common.sh) | ✅ 0 |
 | 裸 `yaml.safe_load` | 12 处 | 0 (全走 lib/yaml_utils) | ✅ 0 |
 | 裸 `import yaml` (无 lib) | 12 处 | 0 | ✅ 0 |
-| lib/ 依赖脚本数 | 0 | 72 (100% 活跃脚本) | ✅ 100% |
-| 活跃顶层脚本数 | 95 | 72 | ✅ 72 |
-| 归档脚本数 | 0 | 23 | ✅ 23 |
+| lib/ 依赖脚本数 | 0 | 66 (100% 活跃脚本) | ✅ 100% |
+| 活跃顶层脚本数 | 95 | 66 | ✅ 66 |
+| 归档脚本数 | 0 | 29 | ✅ 29 |
 | lib/ 单元测试 | 0 | 105 (7 模块) | ✅ 105 tests |
 
 ---

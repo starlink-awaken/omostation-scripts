@@ -1,0 +1,8 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+# E402: module-import-not-at-top-of-file
+# L2 scripts intentionally do sys.path.insert before importing projects/omo/src modules.
+ignore = ["E402"]

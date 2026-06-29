@@ -17,8 +17,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from lib.bootstrap import workspace_root
-from lib.paths import SYSTEM_YAML, OMO_DIR
+from lib.paths import OMO_DIR
 from lib.yaml_utils import load_yaml
 
 

@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from pathlib import Path
 from typing import Any
 
 from lib.bootstrap import workspace_root, setup_omo_src
