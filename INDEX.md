@@ -1,9 +1,9 @@
 # scripts/INDEX.md — 分类索引
 
 > 全量脚本分类索引。新增脚本必须在此登记。
-> 最后更新: 2026-06-27 (lib/ 9 模块同步 + gov_heartbeat.py 标记 deprecated)
+> 最后更新: 2026-06-29 (归档 23 个历史/演示/废弃脚本到 archive/)
 
-## 1. CI 治理检查 (`check-*.py`) — 26 个
+## 1. CI 治理检查 (`check-*.py`) — 25 个
 
 > 引用方: `.github/workflows/governance-check.yml` (18 个), 其他 CI workflows, Makefile, CLAUDE.md
 
@@ -38,7 +38,6 @@
 | 脚本 | 最后修改 | 用途 |
 |------|---------|------|
 | `check-future-annotations.py` | 2026-06-19 | `from __future__ import annotations` 使用检查 |
-| `check-port-registry.py` | 2026-06-08 | 端口注册表检查 (可能被 `check-vault-paths.py` 取代) |
 | `check-state-goals-alignment.py` | 2026-06-17 | state.yaml vs goals/current.yaml 对齐 (CI `state-goals-enforce.yml` 引用) |
 
 ## 2. OPC 自动化 (`opc_*`) — 19 个
@@ -106,7 +105,6 @@
 |------|--------|------|
 | `sync_omo_state.py` | Makefile (`governance-sync`), `.omo/_truth/`, `.omo/tasks/README.md` | OMO 状态同步 |
 | `omo_gov_heartbeat.py` | 无直接引用 | OMO 治理心跳 (可能 cron 调用) |
-| `gov_heartbeat.py` | [DEPRECATED] 无直接引用 | 治理心跳 (已废弃, 被 omo_gov_heartbeat.py 取代) |
 | `omo_worker.py` | `.omo/_truth/registry/mutation-surfaces.yaml`, `.omo/tasks/README.md` | OMO worker 调度/分派/提升核心 |
 
 ## 6. SOP 脚本 — 2 个
@@ -134,47 +132,10 @@
 | `lint-opc-carriers.py` | 2026-06-12 | OPC carriers lint |
 | `health_scan.py` / `health_scan.sh` | 2026-06-24 | 健康扫描 (可能 runtime 项目引用) |
 
-## 9. 历史/一次性脚本 — 29 个
+## 9. 历史/一次性脚本 — 8 个
 
-> 以下脚本未被任何 CI/Makefile/.omo/docs 引用。保留作为历史记录。
+> 以下脚本未被任何 CI/Makefile/.omo/docs 引用。保留在顶层作为历史记录；
 > 如需清理，可在子模块 git 历史中回溯。
-
-### Phase 一次性 (7)
-
-| 脚本 | 最后修改 | 用途 |
-|------|---------|------|
-| `phase3_acceptance.py` | 2026-05-31 | Phase 3 验收 |
-| `p60_refactor_dispatch.py` | 2026-06-08 | P60 重构分派 |
-| `p61_action_mapping.py` | 2026-06-08 | P61 action 映射 |
-| `p63_daemon_stdin.py` | 2026-06-08 | P63 daemon stdin |
-| `p63_plist_smoke.sh` | 2026-06-08 | P63 plist 冒烟 |
-| `p66_plist_retry.sh` | 2026-06-08 | P66 plist 重试 |
-| `preserve-m1-files.sh` | 2026-06-07 | M1 文件保护 |
-
-### Demo/场景脚本 (10)
-
-| 脚本 | 最后修改 | 用途 |
-|------|---------|------|
-| `demo-bos-system.py` | 2026-06-07 | BOS 系统演示 |
-| `llm_bos_demo.py` | 2026-06-07 | LLM BOS 演示 |
-| `llm_healthwork_scenario.py` | 2026-06-07 | LLM 健康工作场景 |
-| `scenario_budget_breaker.py` | 2026-06-16 | budget breaker 场景 |
-| `scenario_deep_research.py` | 2026-06-16 | 深度研究场景 |
-| `scenario_evolution_loop.py` | 2026-06-18 | 演化循环场景 |
-| `scenario_great_search.py` | 2026-06-16 | 大搜索场景 |
-| `scenario_hitl_loop.py` | 2026-06-18 | HITL 循环场景 |
-| `scenario_swarm_relay.py` | 2026-06-18 | swarm relay 场景 |
-
-### 阶段验证 (4)
-
-| 脚本 | 最后修改 | 用途 |
-|------|---------|------|
-| `verify_ecos_v6_ssot.py` | 2026-06-17 | eCOS v6 SSOT 验证 |
-| `verify_forensics.py` | 2026-06-17 | 取证验证 |
-| `verify_hardening.py` | 2026-06-18 | 安全加固验证 |
-| `verify_truth.py` | 2026-06-20 | 事实面验证 |
-
-### 其他历史脚本 (8)
 
 | 脚本 | 最后修改 | 用途 |
 |------|---------|------|
@@ -187,7 +148,50 @@
 | `perf-bos-baseline.sh` | 2026-06-07 | BOS 性能基线 |
 | `opc_section17_metrics.py` | 2026-06-12 | §17 指标 |
 
-## 10. 子目录
+## 10. 已归档脚本 (`archive/`)
+
+> 2026-06-29 从顶层迁移至此。这些脚本不再被 CI/Makefile/.omo/docs 引用，
+> 仅作为 git 历史可追溯的归档保留。
+
+### Phase/Demo/场景 (19)
+
+| 脚本 | 用途 |
+|------|------|
+| `phase3_acceptance.py` | Phase 3 验收 |
+| `p60_refactor_dispatch.py` | P60 重构分派 |
+| `p61_action_mapping.py` | P61 action 映射 |
+| `p63_daemon_stdin.py` | P63 daemon stdin |
+| `p63_plist_smoke.sh` | P63 plist 冒烟 |
+| `p66_plist_retry.sh` | P66 plist 重试 |
+| `demo-bos-system.py` | BOS 系统演示 |
+| `llm_bos_demo.py` | LLM BOS 演示 |
+| `llm_healthwork_scenario.py` | LLM 健康工作场景 |
+| `scenario_budget_breaker.py` | budget breaker 场景 |
+| `scenario_deep_research.py` | 深度研究场景 |
+| `scenario_evolution_loop.py` | 演化循环场景 |
+| `scenario_great_search.py` | 大搜索场景 |
+| `scenario_hitl_loop.py` | HITL 循环场景 |
+| `scenario_swarm_relay.py` | swarm relay 场景 |
+| `opc_p3_thin_binding_demo.py` | P3 thin binding 演示 |
+| `opc_p4_budget_audit_demo.py` | P4 budget audit 演示 |
+
+### 验证/废弃 (4)
+
+| 脚本 | 用途 |
+|------|------|
+| `verify_ecos_v6_ssot.py` | eCOS v6 SSOT 验证 |
+| `verify_forensics.py` | 取证验证 |
+| `verify_hardening.py` | 安全加固验证 |
+| `verify_truth.py` | 事实面验证 |
+
+### 被取代脚本 (2)
+
+| 脚本 | 用途 |
+|------|------|
+| `check-port-registry.py` | 端口注册表检查 (被 `check-vault-paths.py` 取代) |
+| `gov_heartbeat.py` | 治理心跳 (已废弃, 被 `omo_gov_heartbeat.py` 取代) |
+
+## 11. 子目录
 
 | 目录 | 文件数 | 用途 |
 |------|--------|------|
@@ -196,6 +200,7 @@
 | `omo/` | 10 | OMO 治理脚本 (governance-agent.sh, omo_worker.py 78KB, x1/x2/x3 审计, cron 安装) |
 | `shell/` | 9 | Shell 工具 (backup, restore, bridge install, watchdog, system consistency) |
 | `install/` | 1 | 安装向导 (setup.sh) |
+| `archive/` | 23 | 已归档的历史/演示/废弃脚本 |
 
 ### omo/ 详细
 
@@ -229,10 +234,11 @@
 |------|------|
 | `setup.sh` | 安装与配置向导 |
 
-## 11. 共享基础设施 (`lib/`)
+## 12. 共享基础设施 (`lib/`)
 
 > scripts/ 作为独立 git 子模块, `lib/` 是正式 Python 子包, 为所有脚本提供共享基础设施。
-> 新脚本强制使用 `lib/`, 旧脚本渐进迁移。当前 84/95 脚本已迁移 (88%)。
+> 新脚本强制使用 `lib/`。当前活跃顶层脚本均已完成 lib/ 迁移；
+> `archive/` 中的历史脚本不再维护。
 
 | 文件 | 暴露 API | 用途 |
 |------|---------|------|

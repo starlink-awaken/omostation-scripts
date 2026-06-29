@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — omostation-scripts
 
 > **scripts/** 独立 git 子模块 · omostation 工作站横切工具层
-> 版本: v1.0 | 2026-06-27
+> 版本: v1.1 | 2026-06-29
 > 全量脚本索引: [INDEX.md](INDEX.md) | 开发规范: [AGENTS.md](AGENTS.md)
 
 ---
@@ -22,10 +22,11 @@ omostation workspace
 ├── bin/               ← 工作区 CLI 入口 (workspace, verify, register-mcp...)
 ├── scripts/           ← 本项目: 横切工具层
 │   ├── lib/           ← L0 共享基础设施
-│   ├── (95 scripts)   ← L1/L2 功能域脚本
+│   ├── (72 scripts)   ← L1/L2 功能域脚本
 │   ├── omo/           ← OMO 治理脚本子目录
 │   ├── shell/         ← Shell 运维工具子目录
-│   └── install/       ← 安装向导子目录
+│   ├── install/       ← 安装向导子目录
+│   └── archive/       ← 已归档脚本子目录
 └── .github/workflows/ ← CI 定义 (引用 scripts/check-*.py 等)
 ```
 
@@ -35,7 +36,7 @@ omostation workspace
 
 | # | 原则 | 说明 |
 |---|------|------|
-| 1 | **平铺保持** | 95 个脚本平铺在顶层，CI/Makefile 路径不断。分类靠命名前缀，不靠子目录 |
+| 1 | **平铺保持** | 72 个活跃脚本平铺在顶层，CI/Makefile 路径不断。分类靠命名前缀，不靠子目录；23 个历史脚本移至 archive/ |
 | 2 | **lib/ 唯一共享源** | 所有共享代码在 `lib/`。禁止在脚本间互相 import (omo_worker 例外) |
 | 3 | **命名即分类** | `check-*` = CI 门禁, `opc_*` = cron 自动化, `x[1-4]-*` = X 轴审计, 以此类推 |
 | 4 | **依赖单向** | `脚本 → lib → (可选) projects/omo/src`。禁止反向依赖 |
@@ -51,12 +52,12 @@ omostation workspace
 │  L2  OMO 耦合层                                               │
 │  需要 sys.path.insert(projects/omo/src) 的脚本               │
 │  sync_omo_state · opc_p6_self_evolve · opc_p7_* · omo_worker│
-│  (15 个)                                                     │
+│  (~12 个)                                                    │
 ├─────────────────────────────────────────────────────────────┤
 │  L1  Workspace 感知层                                         │
 │  依赖 workspace root / .omo 路径，但不依赖 omo src            │
-│  check-*.py · x[1-4]-*.sh · debt-*.sh · governance-*        │
-│  (40+ 个)                                                    │
+│  check-*.py · x[1-4]-*.sh · debt-*.sh · governance-* · etc. │
+│  (~60 个)                                                    │
 ├─────────────────────────────────────────────────────────────┤
 │  L0  共享基础设施层                                            │
 │  lib/bootstrap.py · lib/paths.py · lib/yaml_utils.py        │
@@ -80,31 +81,33 @@ omostation workspace
 
 ## 4. 功能域模型
 
-scripts/ 的 95 个脚本按业务能力划分为 **7 个功能域**：
+scripts/ 的 72 个活跃脚本按业务能力划分为 **6 个功能域**：
 
 ```
 ┌──────────────────────────────────────────────────┐
-│              scripts/ 功能域 (95 scripts)          │
+│              scripts/ 功能域 (72 scripts)          │
 ├──────────┬──────────┬──────────┬─────────────────┤
 │ CI Gates │ OPC Auto │ X-Axis   │ Governance Tools│
-│ 26       │ 19       │ 5        │ 5               │
+│ 25       │ 17       │ 5        │ 4               │
 ├──────────┼──────────┼──────────┼─────────────────┤
-│ OMO Sync │ SOP/Util │ History  │                 │
-│ 4        │ 5        │ 31       │                 │
+│ OMO Sync │ SOP/Util │          │                 │
+│ 3        │ 18       │          │                 │
 └──────────┴──────────┴──────────┴─────────────────┘
 ```
+
+> 另有 `archive/` 子目录保存 23 个已归档的历史/演示/废弃脚本，不再被 CI/Makefile/.omo/docs 引用。
 
 ### 功能域详情
 
 | 域 | 前缀 | 数量 | 层 | 入口 | 依赖 |
 |----|------|------|----|------|------|
-| **CI Gates** | `check-*.py` | 26 | L1 | `.github/workflows/governance-check.yml` | lib/paths, lib/yaml_utils |
-| **OPC Automation** | `opc_*` | 19 | L2 | cron schedule (docs ASYNC-BUS-CRON) | lib/bootstrap, projects/omo/src |
+| **CI Gates** | `check-*.py` | 25 | L1 | `.github/workflows/governance-check.yml` | lib/paths, lib/yaml_utils |
+| **OPC Automation** | `opc_*` | 17 | L2 | cron schedule (docs ASYNC-BUS-CRON) | lib/bootstrap, projects/omo/src |
 | **X-Axis Audit** | `x[1-4]-*` | 5 | L1 | Makefile (`governance-check`) | lib/shell/common.sh |
-| **Governance Tools** | `debt-*`, `gov-*`, `governance-*` | 5 | L1 | Makefile, CI `debt-audit.yml` | lib/shell/common.sh, lib/paths |
-| **OMO State Sync** | `sync_*`, `omo_*` | 4 | L2 | Makefile (`governance-sync`), .omo/_truth | lib/bootstrap, projects/omo/src |
-| **SOP/Utils** | `sop_*`, `validate_*`, `ci_local.sh`, `release.sh` | 5 | L1 | CI, PR template, .omo/standards | lib/paths |
-| **History** | `scenario_*`, `p[0-9]*`, `verify_*`, `phase*`, demos | 31 | — | 无 (历史归档) | — |
+| **Governance Tools** | `debt-*`, `governance-*` | 4 | L1 | Makefile, CI `debt-audit.yml` | lib/shell/common.sh, lib/paths |
+| **OMO State Sync** | `sync_*`, `omo_*` | 3 | L2 | Makefile (`governance-sync`), .omo/_truth | lib/bootstrap, projects/omo/src |
+| **SOP/Utils** | `sop_*`, `validate_*`, `ci_local.sh`, `release.sh`, `health_scan.*`, `install-cron.sh`, etc. | 18 | L1 | CI, PR template, .omo/standards | lib/paths |
+| **Archive** | `archive/` | 23 | — | 无 (历史归档) | — |
 
 ---
 
@@ -140,7 +143,7 @@ lib/
                     └──────────┬──────────────────┘
                                │ calls
                     ┌──────────▼──────────────────┐
-                    │  CI Gates (26 check-*.py)    │
+                    │  CI Gates (25 check-*.py)    │
                     │  L1: lib/paths + yaml_utils │
                     └──────────┬──────────────────┘
                                │
@@ -156,7 +159,7 @@ lib/
                     │ └──────────┬──────────────────┘
                     │            │
      cron ──────────┐ │ ┌────────▼───────────────────┐
-     (docs cron     ├─┤ │  OPC Automation (19)        │
+     (docs cron     ├─┤ │  OPC Automation (17)        │
       schedule)     │ │ │  opc_p5/p6/p7_*              │
                     │ │ │  L2: lib/bootstrap + omo src│
      Makefile ──────┘ │ └──────────┬──────────────────┘
@@ -181,10 +184,10 @@ lib/
 
      (无引用)
                       ┌────────────────────────────┐
-                      │  History (31)              │
-                      │  scenario_* · p[0-9]* ·    │
-                      │  verify_* · demos          │
-                      │  保留不删, 不迁移          │
+                      │  Archive (23)              │
+                      │  archive/                  │
+                      │  历史/演示/废弃脚本        │
+                      │  归档保留, 不维护          │
                       └────────────────────────────┘
 ```
 
@@ -222,7 +225,7 @@ lib/
 | Gov Tools | — | ✅ | — | ✅ | — |
 | OMO Sync | ✅ | — | — | — | ✅ |
 | SOP/Utils | — | ✅ | — | — | — |
-| History | — | — | — | — | — |
+| Archive | — | — | — | — | — |
 
 图例: ✅ = 应该依赖, — = 不应依赖
 
@@ -290,9 +293,9 @@ exit_summary
 | `x[1-4]-*.sh` | X 轴审计检查 | L1 |
 | `debt-*.sh` | 债务审计工具 | L1 |
 | `sync_*.py` | 状态同步脚本 | L2 |
-| `verify_*.py` | 阶段验证脚本 (历史) | — |
-| `scenario_*.py` | 场景演示脚本 (历史) | — |
-| `p[0-9]*` | Phase 一次性脚本 (历史) | — |
+| `verify_*.py` | 阶段验证脚本 (已归档至 archive/) | — |
+| `scenario_*.py` | 场景演示脚本 (已归档至 archive/) | — |
+| `p[0-9]*` | Phase 一次性脚本 (已归档至 archive/) | — |
 
 ---
 
@@ -304,6 +307,7 @@ exit_summary
 | `omo/` | OMO 治理高级脚本 | governance-agent.sh (cron), omo_worker.py (78KB 核心), x1/x2/x3 审计 |
 | `shell/` | Shell 运维工具 | backup, restore, bridge install, watchdog — 独立运维, 不走 CI |
 | `install/` | 安装向导 | setup.sh — 一次性环境配置 |
+| `archive/` | 历史归档 | 存放不再维护的历史/演示/废弃脚本 |
 
 `omo/` 子目录脚本使用 `parents[2]` 推导 workspace root (比顶层多一层)。迁移到 `lib/` 后，`lib/bootstrap.workspace_root()` 自动处理深度差异。
 
@@ -322,7 +326,8 @@ exit_summary
 | Step 7 | 清理 dead imports (3 处) | ✅ 完成 | lint-opc-carriers, check-state-goals, cost_track_org |
 | Step 8 | 100% 迁移 + setup_omo_src + ci_local lint | ✅ 完成 | 95/95 (100%), 12 处 sys.path.insert → 0 |
 | Step 9 | lib/ 单元测试 | ✅ 完成 | 7 模块 105 tests, 0.10s |
-| Step 10 | omo_worker.py 拆分 | 不做 | omo 项目自渐进拆分, 等 thin wrapper 化 |
+| Step 10 | 归档历史/演示/废弃脚本 | ✅ 完成 | 23 个脚本移至 archive/，顶层剩 72 个活跃脚本 |
+| Step 11 | omo_worker.py 拆分 | 不做 | omo 项目自渐进拆分, 等 thin wrapper 化 |
 
 ### 量化指标
 
@@ -334,7 +339,9 @@ exit_summary
 | shell 颜色 helper 重复 | 7 处 | 0 (全 source common.sh) | ✅ 0 |
 | 裸 `yaml.safe_load` | 12 处 | 0 (全走 lib/yaml_utils) | ✅ 0 |
 | 裸 `import yaml` (无 lib) | 12 处 | 0 | ✅ 0 |
-| lib/ 依赖脚本数 | 0 | 95 (100%) | ✅ 100% |
+| lib/ 依赖脚本数 | 0 | 72 (100% 活跃脚本) | ✅ 100% |
+| 活跃顶层脚本数 | 95 | 72 | ✅ 72 |
+| 归档脚本数 | 0 | 23 | ✅ 23 |
 | lib/ 单元测试 | 0 | 105 (7 模块) | ✅ 105 tests |
 
 ---
@@ -387,4 +394,4 @@ bash ci_local.sh  # 跑 step 0 (lib/ 检查) + step 1-9 (kairon/omo CI)
 |------|------|
 | omo API 变动 break 脚本 | `lib/bootstrap.omo_src_path()` 统一注入点, 便于未来改 import 策略 |
 | 新脚本不走 lib/ | CI lint 检查: `rg "Path\(__file__\).*parents\[" scripts/*.py` 新增即告警 |
-| History 脚本堆积 | INDEX.md 标注, 不删但不维护 |
+| 历史脚本堆积 | 已迁移至 archive/ 子目录，顶层保持整洁；INDEX.md 标注归档清单 |

@@ -1,7 +1,7 @@
 # AGENTS.md — omostation-scripts
 
 > Omostation 工作站脚本集合 (独立 git 子模块)
-> 顶层 95 个脚本 + 4 个子目录。全量分类索引见 [INDEX.md](INDEX.md)。
+> 顶层 72 个活跃脚本 + 5 个子目录。全量分类索引见 [INDEX.md](INDEX.md)。
 
 ## Quick Commands
 
@@ -25,15 +25,16 @@ python3 -m pytest tests/lib/ -v
 scripts/
 ├── lib/         ── 共享基础设施 (9 模块: bootstrap, paths, yaml_utils, cli, validators, ssot_checker, cost_tracker, shell/common.sh)
 ├── tests/       ── 单元测试 (lib/ 7 模块 105 tests + omo/ 2 脚本)
-├── (顶层)      ── 95 个脚本, 按命名前缀分类 (见 INDEX.md)
+├── (顶层)      ── 72 个活跃脚本, 按命名前缀分类 (见 INDEX.md)
 ├── omo/        ── OMO 治理脚本 (governance-agent, omo_worker, x1/x2/x3 审计)
 ├── shell/      ── Shell 工具 (backup, restore, bridge install, watchdog)
-└── install/    ── 安装与配置向导 (setup.sh)
+├── install/    ── 安装与配置向导 (setup.sh)
+└── archive/    ── 已归档的历史/演示/废弃脚本 (23 个)
 ```
 
 ## 共享基础设施 (lib/)
 
-`lib/` 是正式 Python 子包, 为所有脚本提供统一基础设施。当前 84/95 脚本已迁移 (88%)。
+`lib/` 是正式 Python 子包, 为所有脚本提供统一基础设施。当前活跃顶层脚本均已完成 lib/ 迁移。
 
 | 模块 | 用途 |
 |------|------|

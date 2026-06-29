@@ -5,8 +5,15 @@ __pycache__/
 node_modules/
 dist/
 .omc/
+.omo/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.deepeval/
+.coverage
 *.db
 *.db-wal
 *.db-shm
 *.log
 .DS_Store
+*.local.json
