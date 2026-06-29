@@ -73,6 +73,20 @@ def main() -> int:
             task_ids.add(task_id)
             if group == "done":
                 done_ids.add(task_id)
+    # archived tasks (历史归档) 也算 done — 不算 orphaned / missing
+    for archive_dir in ("archived", "archive"):
+        archive_root = omo_dir / "tasks" / archive_dir
+        if not archive_root.exists():
+            continue
+        for task_file in archive_root.rglob("*.yaml"):
+            task = load_yaml(task_file)
+            task_id = task.get("id")
+            if not task_id:
+                continue
+            task_status = task.get("status")
+            if task_status in ("done", "completed", "archived"):
+                done_ids.add(task_id)
+                task_ids.add(task_id)
 
     missing = sorted(goal_task_ids - task_ids)
     orphaned = sorted((task_ids - done_ids) - goal_task_ids)
