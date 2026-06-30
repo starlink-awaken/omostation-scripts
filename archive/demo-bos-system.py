@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-eCOS v5 BOS URI System Demo
+eCOS v6 BOS URI System Demo
 ============================
 快速演示脚本：验证 BOS URI 系统的核心能力。
 
@@ -30,7 +30,7 @@ def info(msg): print(f"     {msg}")
 # Demo flow
 # ═══════════════════════════════════════════════════════════════
 
-banner("eCOS v5 · BOS URI System Demo")
+banner("eCOS v6 · BOS URI System Demo")
 
 # 1. Workflow M1 nodes
 banner("1. Workflow M1 Nodes")
