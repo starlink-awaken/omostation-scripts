@@ -6,3 +6,7 @@ line-length = 120
 # E402: module-import-not-at-top-of-file
 # L2 scripts intentionally do sys.path.insert before importing projects/omo/src modules.
 ignore = ["E402"]
+
+[tool.ruff.lint.per-file-ignores]
+# archive/ contains historical scripts not actively maintained.
+"archive/*" = ["F401", "F541", "F841", "E741", "E701"]

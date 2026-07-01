@@ -1,11 +1,9 @@
 """Unit tests for lib/bootstrap.py."""
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
-import pytest
 
 # Ensure scripts/ is on sys.path
 SCRIPTS_DIR = Path(__file__).resolve().parents[2]

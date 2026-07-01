@@ -15,7 +15,6 @@ import argparse
 import json
 import sqlite3
 import sys
-from collections import Counter
 from datetime import datetime, UTC
 from pathlib import Path
 

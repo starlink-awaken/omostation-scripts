@@ -11,7 +11,6 @@ import os
 import sys
 import json
 import time
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 
@@ -61,9 +60,9 @@ async def verify_hardening():
     )
     
     if ledger_path.exists():
-        print(f"   ✅ SUCCESS: Atomic append completed without error.")
+        print("   ✅ SUCCESS: Atomic append completed without error.")
     else:
-        print(f"   ❌ FAILURE: Ledger not written.")
+        print("   ❌ FAILURE: Ledger not written.")
 
     print("\n[3] Verifying Sandbox Expansion...")
     from runtime.kei_sandbox import _audit_hook

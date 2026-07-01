@@ -13,10 +13,8 @@ POC 设计: 不引入 anthropic 依赖, mock 模式跑通即可.
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import sys
-from pathlib import Path
 
 from lib.bootstrap import workspace_root, setup_omo_src
 

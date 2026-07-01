@@ -10,7 +10,6 @@ import asyncio
 import os
 import sys
 import time
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 
@@ -36,9 +35,9 @@ async def verify_truth():
     status = swarm.status()
     self_node = next((n for n in status.get("nodes", []) if n["node_id"] == swarm.node_id), None)
     if self_node and self_node.get("load_score") == 10:
-        print(f"   ✅ SUCCESS: Swarm telemetry verified.")
+        print("   ✅ SUCCESS: Swarm telemetry verified.")
     else:
-        print(f"   ❌ FAILURE: Swarm telemetry failed.")
+        print("   ❌ FAILURE: Swarm telemetry failed.")
 
     # 2. Verify Vault ripgrep Search
     print("\n[2] Verifying Vault ripgrep Search...")
@@ -50,7 +49,7 @@ async def verify_truth():
     if res:
         print(f"   ✅ SUCCESS: ripgrep search returned real results. Found: {res[0]['title']}")
     else:
-        print(f"   ❌ FAILURE: ripgrep search failed.")
+        print("   ❌ FAILURE: ripgrep search failed.")
 
     # 3. Verify HITL Real Side-effects
     print("\n[3] Verifying HITL Real Side-effects...")
@@ -64,7 +63,7 @@ async def verify_truth():
     if after_exists and (not before_exists or after_size >= before_size):
         print(f"   ✅ SUCCESS: Mutation wrote to {patch_file.name}")
     else:
-        print(f"   ❌ FAILURE: No side-effects created.")
+        print("   ❌ FAILURE: No side-effects created.")
 
     # 4. Verify Swarm Signature
     print("\n[4] Verifying Swarm Signature...")
@@ -76,11 +75,11 @@ async def verify_truth():
     if identity and pk:
         sig = identity.sign(b"test", pk)
         if identity.verify(b"test", sig, identity.public_key):
-            print(f"   ✅ SUCCESS: Ed25519 signing and verification verified.")
+            print("   ✅ SUCCESS: Ed25519 signing and verification verified.")
         else:
-            print(f"   ❌ FAILURE: Signature verification failed.")
+            print("   ❌ FAILURE: Signature verification failed.")
     else:
-        print(f"   ❌ FAILURE: Identity creation failed.")
+        print("   ❌ FAILURE: Identity creation failed.")
 
     print("\n🏆 TRUTH VERIFICATION COMPLETE.")
 

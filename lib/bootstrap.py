@@ -76,7 +76,6 @@ def setup_omo_src(*extra: str | Path) -> None:
     Args:
         *extra: 额外要注入的路径 (如 agora src, runtime src 等)
     """
-    import sys
     paths = [omo_src_path(), *extra]
     for p in paths:
         p = str(p)

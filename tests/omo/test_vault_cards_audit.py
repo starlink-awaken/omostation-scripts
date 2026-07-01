@@ -1,14 +1,12 @@
 """Unit tests for omo.vault_x1_audit and omo.cards_x3_metrics (P44 R0)."""
 from __future__ import annotations
 
-import json
 import sqlite3
 import subprocess
 import sys
 from datetime import datetime, timedelta, UTC
 from pathlib import Path
 
-import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "omo"  # tests/omo → scripts → scripts/omo
 sys.path.insert(0, str(SCRIPTS_DIR))

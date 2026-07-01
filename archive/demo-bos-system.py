@@ -9,7 +9,6 @@ eCOS v6 BOS URI System Demo
 """
 
 import sys
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 

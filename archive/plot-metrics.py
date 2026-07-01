@@ -10,14 +10,12 @@ plot-metrics.py — 治理债指标趋势图 (纯 ASCII, 无外部依赖)
 import json
 import sys
 from datetime import datetime
-from pathlib import Path
 
 from lib.bootstrap import workspace_root, setup_omo_src
 
 WORKSPACE_ROOT = workspace_root()
 setup_omo_src()
 
-from omo.omo_io import write_text_atomic
 from omo.omo_metrics_plot import write_metrics_trend
 
 # ── 路径配置 ──────────────────────────────────────────────

@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from pathlib import Path
 
 # Setup paths
 from lib.bootstrap import workspace_root

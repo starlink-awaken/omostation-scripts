@@ -9,9 +9,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-import json
-import time
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 
@@ -45,7 +42,7 @@ async def verify_forensics():
     
     entry = pm.registry.get_entry("swarm-node-test-port-node")
     if entry:
-        print(f"   ✅ SUCCESS: Swarm Proxy correctly registered remote node.")
+        print("   ✅ SUCCESS: Swarm Proxy correctly registered remote node.")
         # Check endpoint in config
         endpoint = entry.config.get("mcp_endpoint", "")
         if str(custom_port) in endpoint:
@@ -53,12 +50,11 @@ async def verify_forensics():
         else:
             print(f"   ❌ FAILURE: Port {custom_port} not found in endpoint {endpoint}.")
     else:
-        print(f"   ❌ FAILURE: Swarm Proxy failed to register.")
+        print("   ❌ FAILURE: Swarm Proxy failed to register.")
 
     # 2. Verify Budget Flow-through (Deduction)
     print("\n[2] Verifying Real-time Budget Deduction...")
     from llm_gateway.provider import record_llm_cost
-    from llm_gateway.budget import get_remaining_budget
     
     ledger_path = ROOT / "runtime" / "data" / "llm_quota_ledger.jsonl"
     if ledger_path.exists(): ledger_path.unlink()
@@ -67,10 +63,10 @@ async def verify_forensics():
     record_llm_cost("openai/gpt-4.1", 1000000, 1000000)
     
     if ledger_path.exists():
-        print(f"   ✅ SUCCESS: record_llm_cost now writes to llm_quota_ledger.jsonl!")
-        print(f"   📄 Ledger updated successfully.")
+        print("   ✅ SUCCESS: record_llm_cost now writes to llm_quota_ledger.jsonl!")
+        print("   📄 Ledger updated successfully.")
     else:
-        print(f"   ❌ FAILURE: Quota ledger was not updated.")
+        print("   ❌ FAILURE: Quota ledger was not updated.")
 
     # 3. Verify Aggregated Search Timeouts
     print("\n[3] Verifying Memory Spine Timeouts...")

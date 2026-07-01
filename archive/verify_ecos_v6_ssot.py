@@ -6,7 +6,6 @@ Verifies that AGENTS.md documentation matches the L0 BOS registry.
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
@@ -53,18 +52,18 @@ def verify_ssot():
         # Check if registry URIs for this project are missing in docs
         # (Filter registry by package name approximation)
         proj_registry = {u for u in registry_uris if f"/{proj}/" in u or f"/{proj}-" in u}
-        missing_in_docs = proj_registry - doc_uris
+        proj_registry - doc_uris
 
         print(f"\n📁 Project: {proj}")
         print(f"   - Documented URIs: {len(doc_uris)}")
         
         if missing_in_registry:
-            print(f"   ❌ ERROR: Documentation contains UNREGISTERED URIs:")
+            print("   ❌ ERROR: Documentation contains UNREGISTERED URIs:")
             for u in missing_in_registry:
                 print(f"     - {u}")
             total_mismatches += len(missing_in_registry)
         else:
-            print(f"   ✅ All documented URIs are registered in L0.")
+            print("   ✅ All documented URIs are registered in L0.")
 
     print("\n" + "="*60)
     if total_mismatches == 0:

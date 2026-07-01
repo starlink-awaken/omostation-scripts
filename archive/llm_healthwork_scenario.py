@@ -19,7 +19,6 @@ import asyncio
 import json
 import os
 import sys
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 
@@ -169,15 +168,15 @@ def ollama_mode_runner() -> dict:
         from openai import OpenAI  # type: ignore[import-not-found]
 
         client = OpenAI(base_url=base_url, api_key="ollama")  # ollama 不要真 key
-        print(f"  -> 用 OpenAI 兼容客户端")
+        print("  -> 用 OpenAI 兼容客户端")
     except ImportError:
         try:
             import ollama as ollama_sdk  # type: ignore[import-not-found]
 
             client = ollama_sdk
-            print(f"  -> 退化用 ollama Python SDK")
+            print("  -> 退化用 ollama Python SDK")
         except ImportError:
-            print(f"  [fallback] openai/ollama SDK 都未装, 退到 mock 模式")
+            print("  [fallback] openai/ollama SDK 都未装, 退到 mock 模式")
             return mock_mode_runner()
 
     # 第一轮: LLM 调工具
@@ -239,7 +238,7 @@ def ollama_mode_runner() -> dict:
 
     # 如果 LLM 没调工具, 走 fallback URI pipeline
     if not results:
-        print(f"  -> LLM 未调工具 (小模型可能不识 tool_use), 走 fallback URI pipeline")
+        print("  -> LLM 未调工具 (小模型可能不识 tool_use), 走 fallback URI pipeline")
         for uri, args in HEALTHWORK_URI_PIPELINE:
             try:
                 r = asyncio.run(invoke_bos_uri_tool(uri, args))

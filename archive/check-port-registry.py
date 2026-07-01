@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 from lib.bootstrap import workspace_root
 from lib.yaml_utils import load_yaml

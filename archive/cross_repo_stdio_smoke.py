@@ -6,7 +6,6 @@ stdio_rpc helper 已 P49-simplify 抽 3 仓, 跨仓 line protocol 一致 (同 he
 """
 from __future__ import annotations
 
-import json
 import sys
 from typing import Any
 

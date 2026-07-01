@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import yaml
 import argparse
 import shutil
 import sys

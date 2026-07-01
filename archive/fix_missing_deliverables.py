@@ -1,9 +1,5 @@
 import os
-import re
-import sys
-from pathlib import Path
 
-from lib.bootstrap import workspace_root
 from lib.paths import DELIVERY_DIR
 
 missing_files = [

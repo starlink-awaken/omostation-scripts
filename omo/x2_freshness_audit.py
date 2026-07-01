@@ -26,7 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lib.bootstrap import workspace_root
-from lib.paths import OMO_DIR, TRUTH_DIR
+from lib.paths import OMO_DIR
 from lib.yaml_utils import load_yaml_or_default
 
 WORKSPACE_ROOT = workspace_root()
