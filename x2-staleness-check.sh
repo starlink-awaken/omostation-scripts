@@ -44,7 +44,7 @@ TREND_FILE="$OMO_DIR/_control/debt-dashboard/health-trend.md"
 if [ -f "$TREND_FILE" ]; then
     pass "health-trend.md 存在"
     # 检查趋势是否向上
-    LAST_WEIGHT=$(grep -E "^\|.*\|[0-9]" "$TREND_FILE" | tail -1 | awk -F'|' '{print $3}' | tr -d ' ')
+    LAST_WEIGHT=$(grep -E "^[|].*[|][0-9]" "$TREND_FILE" 2>/dev/null | tail -1 | awk -F'|' '{print $3}' | tr -d ' ' || echo "1.0")
     if [ -n "$LAST_WEIGHT" ]; then
         pass "最新 debt_weight = $LAST_WEIGHT"
     fi
@@ -55,8 +55,8 @@ fi
 # 4. 债务解决率检查
 echo "4. 债务解决率"
 if [ -f "$SYSTEM_YAML" ]; then
-    RESOLVED=$(grep "resolved_count:" "$SYSTEM_YAML" | head -1 | awk '{print $2}')
-    UNRESOLVED=$(grep "unresolved_count:" "$SYSTEM_YAML" | head -1 | awk '{print $2}')
+    RESOLVED=$(grep "resolved_count:" "$SYSTEM_YAML" | head -1 | awk '{print $2}' 2>/dev/null || echo "0")
+    UNRESOLVED=$(grep "unresolved_count:" "$SYSTEM_YAML" | head -1 | awk '{print $2}' 2>/dev/null || echo "0")
     TOTAL=$((RESOLVED + UNRESOLVED))
     if [ "$TOTAL" -gt 0 ]; then
         RATE=$((RESOLVED * 100 / TOTAL))

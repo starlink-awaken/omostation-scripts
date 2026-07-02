@@ -47,7 +47,7 @@ DOCS=("AGENTS.md" "CLAUDE.md")
 for doc in "${DOCS[@]}"; do
     if [ -f "$REPO_ROOT/$doc" ]; then
         # 检查是否有版本信息
-        if grep -q "最后更新\|last_updated\|version" "$REPO_ROOT/$doc" 2>/dev/null; then
+        if grep -Eq "最后更新|last_updated|version" "$REPO_ROOT/$doc" 2>/dev/null; then
             pass "$doc: 有版本信息"
         else
             warn "$doc: 缺少版本信息"

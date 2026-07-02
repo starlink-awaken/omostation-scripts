@@ -12,13 +12,13 @@ echo ""
 
 # 1. 债务优先级分布
 echo "1. 债务优先级分布"
-DEBT_ITEMS=$(grep -L "status: closed" "$OMO_DIR/debt/items/"*.yaml 2>/dev/null | wc -l | tr -d ' ')  # 数 open 债务 (closed 已解决不计; 之前 find 数全部含 closed → 虚高)
+DEBT_ITEMS=$( (grep -L "status: closed" "$OMO_DIR/debt/items/"*.yaml 2>/dev/null || true) | wc -l | tr -d ' ')  # 数 open 债务 (closed 已解决不计)
 if [ "$DEBT_ITEMS" -eq 0 ]; then
     pass "无未解决债务"
 else
     warn "有 $DEBT_ITEMS 项债务"
     # 检查是否有 critical 债务
-    CRITICAL=$(grep -l "severity: critical" "$OMO_DIR/debt/items/"*.yaml 2>/dev/null | wc -l | tr -d ' ')
+    CRITICAL=$( (grep -l "severity: critical" "$OMO_DIR/debt/items/"*.yaml 2>/dev/null || true) | wc -l | tr -d ' ')
     if [ "$CRITICAL" -gt 0 ]; then
         fail "有 $CRITICAL 项 critical 债务"
     fi
@@ -47,7 +47,9 @@ done
 echo "4. 债务分类"
 CATEGORIES=("technical" "governance" "process")
 for cat in "${CATEGORIES[@]}"; do
+    set +o pipefail
     CAT_COUNT=$(grep -l "source:" "$OMO_DIR/debt/items/"*.yaml 2>/dev/null | xargs grep -l "$cat" 2>/dev/null | wc -l | tr -d ' ')
+    set -o pipefail
     if [ "$CAT_COUNT" -eq 0 ]; then
         pass "$cat: 无债务"
     else
