@@ -29,7 +29,6 @@ ACTIVE_PROJECTS = (
     "bus-foundation",
     "c2g",
     "family-hub",
-    "hermes-console",
     "l4-kernel",
     "model-driven",
     "observability",
