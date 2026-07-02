@@ -97,26 +97,30 @@ def main() -> int:
         flags.append(f"orphaned_tasks:{','.join(orphaned)}")
 
     divergence = state.get("divergence_flags", [])
-    computed = set(divergence)
-    expected = set(flags)
 
-    all_ok = not flags and not (computed - expected)
+    # computed (flags) 是真源 — 从 goals/tasks 实时算. state (divergence) 是 snapshot,
+    # 由 governance loop 维护, 可能漂移. 真源对齐 (flags 空) 时, state stale 只 warning,
+    # 不阻断 CI (governance loop 该刷新 state, 非 CI 阻断事由).
+    real_aligned = not flags
 
-    if all_ok:
+    if real_aligned:
         if divergence:
-            # state 中有 divergence flag 但实际已修复 — 说明 state 过期
-            print("::warning::State divergence flags present but all tasks are aligned (stale flags)")
-            return 1
+            print(
+                f"::warning::State divergence_flags stale: state={list(divergence)} "
+                f"but computed empty (goals/tasks realigned). Governance loop should refresh state."
+            )
+            return 0
         print("State-goals alignment: OK")
         return 0
 
+    # 真源有 missing/orphaned — 真 divergence, 阻断.
     if divergence != flags:
         print("::warning::State divergence flags mismatch")
         print(f"  Expected: {flags}")
         print(f"  Found:    {divergence}")
         return 1
 
-    for flag in divergence:
+    for flag in flags:
         print(f"::warning::Divergence flag: {flag}")
     return 1
 
