@@ -5,7 +5,7 @@ P7-H1: 1-2 周周期 (cut → review → ship) + retrospective 落盘.
 产出物:
   - .omo/_delivery/release/{date}-cycle.json (cycle 状态)
   - .omo/_delivery/release/CHANGELOG.md (release notes: summary/validation/debt)
-  - .omo/tasks/registry/done/OPC-P7-H1/retrospective.md
+  - runtime/omo/tasks/registry/done/OPC-P7-H1/retrospective.md
 
 red_line: release notes 必须含 summary/validation/debt 三件套.
 """

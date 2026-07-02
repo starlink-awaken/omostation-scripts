@@ -81,7 +81,7 @@ def main() -> int:
 
         write_budget_audit_llm_sample(ROOT, audit_record)
 
-        rollout_out = ROOT / ".omo" / "_delivery" / "audit-rollout" / "2026-06-12-opc-p4.json"
+        rollout_out = RUNTIME_DELIVERY_DIR / "audit-rollout" / "2026-06-12-opc-p4.json"
         rollout_cmd = [
             "python3",
             "-m",

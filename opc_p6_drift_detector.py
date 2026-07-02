@@ -7,7 +7,7 @@ P6-G3: drift detector 覆盖
   3. duplicate facts: 同一事实多份副本 (e.g. health_score 在多 yaml 中不一致)
   4. agora bypass: 业务代码绕过 agora MCP 直调 provider
 
-输出: .omo/_control/evolution/drift/{date}.json (含 4 类状态)
+输出: runtime/omo/_control/evolution/drift/{date}.json (含 4 类状态)
 """
 from __future__ import annotations
 

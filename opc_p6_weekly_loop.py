@@ -5,8 +5,8 @@ P6-G1: 6-stage loop radar → gap → task → swarm → audit → retro.
 P6-G2: ≥2 周连续周报, 每份 ≥3 candidates + score 排序 + source + timestamp + next-action + 人工审批栏.
 P6-G4: ≥1 candidate 从 radar 跑到 retrospective 闭环实证.
 
-输出: .omo/_control/evolution/loop/{week}.json (1 周 1 份)
-       .omo/tasks/registry/done/OPC-P6-G1/weekly-{week}.md (markdown 报告)
+输出: runtime/omo/_control/evolution/loop/{week}.json (1 周 1 份)
+       runtime/omo/tasks/registry/done/OPC-P6-G1/weekly-{week}.md (markdown 报告)
 """
 from __future__ import annotations
 
@@ -121,7 +121,7 @@ def main() -> int:
     md_path = write_evidence(payload["week"], payload)
     print(f"# week: {payload['week']}", file=sys.stderr)
     print(f"# evidence: {md_path.relative_to(ROOT)}", file=sys.stderr)
-    print(f"# json: .omo/_control/evolution/loop/{payload['week']}.json", file=sys.stderr)
+    print(f"# json: runtime/omo/_control/evolution/loop/{payload['week']}.json", file=sys.stderr)
     # P6 增强 (2026-06-14): weekly loop 末尾跑 mof-state-bridge --strict
     _run_mof_state_bridge_cron()
     return 0

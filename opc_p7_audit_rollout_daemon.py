@@ -8,12 +8,12 @@ P7-H3: E2 dispatcher cron (monthly + weekly + pre-release) + 5 仓 §17 metrics 
   - fallback: `scripts/opc_audit_rollout_5repos.py` (5 仓聚合库函数, baseline 缺失时也可跑通)
   - 模式: weekly (default) / monthly / pre-release (env OPC_MODE)
   - 仓储: 5 仓 (workspace / omo / llm-gateway / compute-mesh / runtime)
-  - 输出: .omo/_delivery/audit-rollout/{date}-{mode}.json
-        + .omo/_control/evolution/drift-history/{date}.json
+  - 输出: runtime/omo/_delivery/audit-rollout/{date}-{mode}.json
+        + runtime/omo/_control/evolution/drift-history/{date}.json
   - cron: scripts/opc_p7_audit_rollout_cron.sh (供 launchd / cron 调用)
   - 触发源: OPC_TRIGGER 环境变量 (cron / manual), 由 wrapper 注入
   - 写回语义:
-      * 每次跑都写 .omo/_delivery/audit-rollout/index.json (无论成败)
+      * 每次跑都写 runtime/omo/_delivery/audit-rollout/index.json (无论成败)
       * run entry 含 4 字段: returncode / fallback_used / trigger_source / primary_error
       * primary 成功 (rc=0) → fallback_used=false, output_path=primary
       * primary 失败 + fallback 成功 → fallback_used=true, output_path=fallback
@@ -27,7 +27,7 @@ P7-H3: E2 dispatcher cron (monthly + weekly + pre-release) + 5 仓 §17 metrics 
 
 并发: _update_history_index 走 fcntl.flock (LOCK_EX) 防 race condition,
       N 并行跑 N 条 entry 全部落盘 (无覆盖丢失).
-      锁文件: .omo/_delivery/audit-rollout/index.json.lock
+      锁文件: runtime/omo/_delivery/audit-rollout/index.json.lock
 
 返回值:
   - primary 成功 → 0
@@ -56,6 +56,7 @@ from omo.omo_audit_rollout import (
     write_daemon_summary as _write_daemon_summary_runtime,
     write_drift_history as _write_drift_history_runtime,
 )
+from omo.omo_ingress_paths import _runtime_omo_root
 from omo.omo_io import ensure_parent_dir
 
 
@@ -90,7 +91,7 @@ def _run_primary_audit_rollout(mode: str) -> dict[str, Any]:
     repos_args: list[str] = []
     for name, rel in REPOS:
         repos_args += ["--repos", f"{name}:{rel}"]
-    out_dir = ROOT / ".omo" / "_delivery" / "audit-rollout"
+    out_dir = _runtime_omo_root(ROOT) / "_delivery" / "audit-rollout"
     out_path = out_dir / f"{_today()}-{mode}.json"
     ensure_parent_dir(out_path)
 
@@ -123,7 +124,7 @@ def _run_primary_audit_rollout(mode: str) -> dict[str, Any]:
 def _run_fallback_5repos() -> dict[str, Any]:
     """fallback: scripts/opc_audit_rollout_5repos.py 库函数直调, baseline 缺失可跑通.
 
-    fallback 自身产物: .omo/_delivery/audit-rollout/{date}-5repos.json
+    fallback 自身产物: runtime/omo/_delivery/audit-rollout/{date}-5repos.json
     (5repos.py 内部读 OPC_MODE env, 写 {date}-{mode}.json 副本).
     mode-specific 文件 (weekly/monthly/pre-release) 由 5repos.py 自身负责,
     daemon 不再硬编码 {date}-weekly.json 副本 (避免 monthly/pre-release 跑出
@@ -135,7 +136,7 @@ def _run_fallback_5repos() -> dict[str, Any]:
         capture_output=True,
         text=True,
     )
-    fallback_path = ROOT / ".omo" / "_delivery" / "audit-rollout" / f"{_today()}-5repos.json"
+    fallback_path = _runtime_omo_root(ROOT) / "_delivery" / "audit-rollout" / f"{_today()}-5repos.json"
     payload = None
     if fallback_path.exists():
         try:

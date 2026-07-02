@@ -20,6 +20,7 @@ from lib.bootstrap import workspace_root, setup_omo_src
 ROOT = workspace_root()
 setup_omo_src()
 
+from omo.omo_ingress_paths import _evolution_dir
 from omo.omo_radar_history import (
     classify_candidate as _classify_candidate_runtime,
     load_radar_history as _load_history_runtime,
@@ -34,7 +35,7 @@ def _now_iso() -> str:
 
 
 def _history_path() -> Path:
-    return ROOT / ".omo" / "_control" / "evolution" / "radar-history.json"
+    return _evolution_dir(ROOT) / "radar-history.json"
 
 
 def _day_bucket() -> str:
@@ -80,7 +81,7 @@ def main() -> int:
     print(f"# snapshot: {str(snapshot_path.relative_to(ROOT))}", file=sys.stderr)
     print(json.dumps({"payload": payload, "history": history.get("summary", {})}, ensure_ascii=False, indent=2))
     # P5 增强 (2026-06-14): cron wrapper 末尾跑 mof-state-bridge --strict
-    # 失同步写 .omo/_delivery/audit-rollout/{date}-mof-state-bridge.json
+    # 失同步写 runtime/omo/_delivery/audit-rollout/{date}-mof-state-bridge.json
     _run_mof_state_bridge_cron()
     # P5 增强 (2026-06-25): 证据驱动 smoke + God Module 检测 (让运行现实进入度量闭环)
     _run_evidence_smoke_cron()

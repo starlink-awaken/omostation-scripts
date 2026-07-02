@@ -21,6 +21,7 @@ from lib.bootstrap import workspace_root, setup_omo_src
 ROOT = workspace_root()
 setup_omo_src()
 
+from omo.omo_ingress_paths import _drift_dir, _loop_dir
 from omo.omo_self_evolve import (
     write_planned_self_evolution_tasks as _write_planned_tasks_runtime,
     write_self_evolve_summary as _write_self_evolve_summary_runtime,
@@ -32,7 +33,7 @@ def _now_iso() -> str:
 
 
 def _load_latest_drift() -> dict[str, Any] | None:
-    drift_dir = ROOT / ".omo" / "_control" / "evolution" / "drift"
+    drift_dir = _drift_dir(ROOT)
     if not drift_dir.exists():
         return None
     files = sorted(drift_dir.glob("*.json"))
@@ -42,7 +43,7 @@ def _load_latest_drift() -> dict[str, Any] | None:
 
 
 def _load_latest_loop_history() -> dict[str, Any] | None:
-    history_path = ROOT / ".omo" / "_control" / "evolution" / "loop" / "history.json"
+    history_path = _loop_dir(ROOT) / "history.json"
     if not history_path.exists():
         return None
     try:
@@ -56,7 +57,7 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
 
     返回 tasks 列表, 每条 task 是 dict, 含 id/title/source/drift_ref/approval_required.
 
-    latest_week 来源: 每次调用都从 .omo/_control/evolution/loop/history.json 读
+    latest_week 来源: 每次调用都从 runtime/omo/_control/evolution/loop/history.json 读
     最新值, 不缓存. 这样 self-evolve 跑出时 nop task 的 latest_week 字段
     与 loop history 始终一致.
     """
@@ -77,7 +78,7 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
                             "id": f"OPC-P6-SELF-EVOLUTION-entry-{missing}",
                             "title": f"Restore cockpit scenario {missing!r} entry",
                             "source": f"drift:{kind}",
-                            "drift_ref": f".omo/_control/evolution/drift/{_now_iso()[:10]}.json",
+                            "drift_ref": f"runtime/omo/_control/evolution/drift/{_now_iso()[:10]}.json",
                             "approval_required": True,
                         }
                     )
@@ -87,7 +88,7 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
                         "id": "OPC-P6-SELF-EVOLUTION-doc-gate-e",
                         "title": "Reconcile docs/OPC-PHASE4 with OPC-P4 plan yaml",
                         "source": f"drift:{kind}",
-                        "drift_ref": f".omo/_control/evolution/drift/{_now_iso()[:10]}.json",
+                        "drift_ref": f"runtime/omo/_control/evolution/drift/{_now_iso()[:10]}.json",
                         "approval_required": True,
                     }
                 )
@@ -98,7 +99,7 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
                             "id": f"OPC-P6-SELF-EVOLUTION-fact-{len(tasks)}",
                             "title": f"Reconcile duplicate fact: {f[:80]}",
                             "source": f"drift:{kind}",
-                            "drift_ref": f".omo/_control/evolution/drift/{_now_iso()[:10]}.json",
+                            "drift_ref": f"runtime/omo/_control/evolution/drift/{_now_iso()[:10]}.json",
                             "approval_required": True,
                         }
                     )
@@ -109,7 +110,7 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
                             "id": f"OPC-P6-SELF-EVOLUTION-bypass-{pat['file'].split('/')[-1]}",
                             "title": f"Strip agora bypass: {pat['pattern']} in {pat['file']}",
                             "source": f"drift:{kind}",
-                            "drift_ref": f".omo/_control/evolution/drift/{_now_iso()[:10]}.json",
+                            "drift_ref": f"runtime/omo/_control/evolution/drift/{_now_iso()[:10]}.json",
                             "approval_required": True,
                         }
                     )
@@ -126,19 +127,19 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
                 "id": nop_id,
                 "title": "No-op: drift detector reported 0 drift; loop continues",
                 "source": "drift:none",
-                "drift_ref": f".omo/_control/evolution/drift/{_now_iso()[:10]}.json",
+                "drift_ref": f"runtime/omo/_control/evolution/drift/{_now_iso()[:10]}.json",
                 "approval_required": True,
                 "human_approval_required": True,
                 "approval_state": "awaiting_human",
                 "last_run_at": _now_iso(),
-                "loop_history_ref": ".omo/_control/evolution/loop/history.json",
+                "loop_history_ref": "runtime/omo/_control/evolution/loop/history.json",
                 "latest_week": latest_week,
             }
         )
     else:
         # drift > 0 路径, 给每条 task 标记 latest_week (与 loop history 对齐)
         for task in tasks:
-            task["loop_history_ref"] = ".omo/_control/evolution/loop/history.json"
+            task["loop_history_ref"] = "runtime/omo/_control/evolution/loop/history.json"
             task["latest_week"] = latest_week
             task["human_approval_required"] = True
             task["approval_state"] = "awaiting_human"

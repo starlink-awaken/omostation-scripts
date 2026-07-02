@@ -8,8 +8,8 @@
 让 P7-H3 cron audit-rollout 真实有 5 仓数据.
 
 输出 schema (与 omo cli audit-rollout 兼容):
-  .omo/_delivery/audit-rollout/{date}-5repos.json
-  .omo/_delivery/audit-rollout/{date}-{mode}.json (mode 透传; weekly/monthly/pre-release 各自产物)
+  runtime/omo/_delivery/audit-rollout/{date}-5repos.json
+  runtime/omo/_delivery/audit-rollout/{date}-{mode}.json (mode 透传; weekly/monthly/pre-release 各自产物)
 """
 from __future__ import annotations
 
@@ -20,9 +20,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.bootstrap import workspace_root
+from lib.bootstrap import setup_omo_src, workspace_root
 
 ROOT = workspace_root()
+setup_omo_src()
+
+from omo.omo_ingress_paths import _runtime_omo_root
 
 
 REPOS = [
@@ -63,7 +66,7 @@ def write_outputs(
 
     让 5repos.py 自身可独立测试, 不必经 daemon/fallback 才验证 mode-aware 输出契约.
     """
-    target_dir = out_dir or (ROOT / ".omo" / "_delivery" / "audit-rollout")
+    target_dir = out_dir or (_runtime_omo_root(ROOT) / "_delivery" / "audit-rollout")
     target_dir.mkdir(parents=True, exist_ok=True)
     stamp = today or _today()
     normalized_mode = _normalize_mode(mode or os.environ.get("OPC_MODE", "weekly"))

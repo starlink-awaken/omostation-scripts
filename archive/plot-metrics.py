@@ -2,7 +2,7 @@
 """
 plot-metrics.py — 治理债指标趋势图 (纯 ASCII, 无外部依赖)
 
-输入: .omo/_delivery/audit-rollout/ 下所有 <date>-metrics.json 或 <date>.json
+输入: runtime/omo/_delivery/audit-rollout/ 下所有 <date>-metrics.json 或 <date>.json
 字段: drift_count, debt_density, health_grade
 输出: metrics-trend.txt (3 张 ASCII bar chart)
 """
@@ -19,7 +19,7 @@ setup_omo_src()
 from omo.omo_metrics_plot import write_metrics_trend
 
 # ── 路径配置 ──────────────────────────────────────────────
-AUDIT_DIR = WORKSPACE_ROOT / ".omo" / "_delivery" / "audit-rollout"
+AUDIT_DIR = WORKSPACE_RUNTIME_DELIVERY_DIR / "audit-rollout"
 OUTPUT_FILE = AUDIT_DIR / "metrics-trend.txt"
 
 # 健康等级映射 R0-R5 → 数值
@@ -131,7 +131,7 @@ def main() -> None:
 
     if not records:
         out("\n  ⚠  No historical data yet — first data point today")
-        out("  (目录 .omo/_delivery/audit-rollout/ 中尚无 <date>.json 文件)")
+        out("  (目录 runtime/omo/_delivery/audit-rollout/ 中尚无 <date>.json 文件)")
         out("  预期格式: <YYYY-MM-DD>-metrics.json 或 <YYYY-MM-DD>.json")
         out("  必需字段: drift_count, debt_density, health_grade")
         write_metrics_trend(WORKSPACE_ROOT, buf.getvalue())
