@@ -227,7 +227,7 @@
 | `agora-watchdog.sh` | (监控) | agora 看门狗 |
 | `fix-symlinks-to-wrappers.sh` | (修复) | 修复软链接 |
 | `sync-omo-state.sh` | `.omo/_truth/registry/agent-clis.yaml`, `.omo/state/README.md` | OMO 状态同步 (shell wrapper) |
-| `test-monitoring.sh` | (测试) | 监控测试 |
+| `test-monitoring.py` | (测试) | 监控测试 (Python async, 原误命名 .sh 致 shellcheck SC2289/1036) |
 
 ### install/ 详细
 
