@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# X2 Freshness Cron Installer (P44 R0)
+# X2 Freshness Cron Installer (P44 R0) — DEPRECATED
+#
+# .. deprecated::
+#     Cron jobs should use omo CLI directly:
+#         omo audit freshness  # X2 freshness 巡检
 #
 # 安装 X2 freshness 巡检 cron 到系统 crontab
 #

@@ -1,5 +1,9 @@
 """Vault X1 audit — Markdown content hash + author tracking.
 
+.. deprecated::
+    This script has been migrated to omo CLI. Use instead:
+        omo audit vault [--days N] [--root PATH] [--json]
+
 Vault 是 Markdown 文档, 无原生审计机制 (X3-value-stack.yaml 标记 implemented: false).
 本工具通过 git commit 链路提供 "事实性" 审计: 每个 .md 文件的 content hash
 + 最后修改 author + 时间戳, 作为 X1 audit SSOT.

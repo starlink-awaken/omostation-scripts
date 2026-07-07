@@ -1,6 +1,10 @@
 """
 X2 Freshness Audit Runner — P43 R7 闭环触发器
 
+.. deprecated::
+    This script has been migrated to omo CLI. Use instead:
+        omo audit freshness [--dry-run] [--only RULE] [--json]
+
 执行 .omo/_truth/x2-freshness-rules.yaml 中定义的 3 条 P43 巡检规则:
 - X2-FRESH-DEBT-EVIDENCE-INTEGRITY: 14 天巡检 debt evidence 完整性
 - X2-FRESH-CROSS-PROJECT-LINT: 7 天巡检全子项目 ruff

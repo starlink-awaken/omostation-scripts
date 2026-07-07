@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Governance Dashboard Cron Installer (P92 B)
+# Governance Dashboard Cron Installer (P92 B) — DEPRECATED
+#
+# .. deprecated::
+#     Cron jobs should use omo CLI directly:
+#         omo doctor           # 统一健康检查
+#         omo inspect          # 统一检查
 #
 # 安装 governance dashboard 14 工具统一巡检 cron 到系统 crontab
 # 配合 P90 governance-dashboard-crontab (每日 6:00 + 每周一 7:00)

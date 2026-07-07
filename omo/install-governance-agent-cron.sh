@@ -1,5 +1,10 @@
 #!/bin/bash
-# P62 governance-agent cron 安装/卸载/状态脚本
+# P62 governance-agent cron 安装/卸载/状态脚本 — DEPRECATED
+#
+# .. deprecated::
+#     Cron jobs should use omo CLI directly:
+#         omo doctor           # 统一健康检查
+#         omo inspect          # 统一检查
 #
 # 用法:
 #   ./install-governance-agent-cron.sh           # 安装 (默认)

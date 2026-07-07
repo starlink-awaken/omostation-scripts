@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""omo_worker.py — DEPRECATED wrapper for omo CLI worker commands.
+
+.. deprecated::
+    This script has been migrated to omo CLI. Use instead:
+        omo worker task <command>
+        omo worker worker <command>
+
+This wrapper is kept for backward compatibility with existing scripts and cron jobs.
+"""
 from __future__ import annotations
 
 import argparse

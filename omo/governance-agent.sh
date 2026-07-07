@@ -1,5 +1,11 @@
 #!/bin/bash
-# P61 自治治理代理 — 每 6h 跑一次 governance-readiness
+# P61 自治治理代理 — DEPRECATED
+#
+# .. deprecated::
+#     This script has been migrated to omo CLI. Use instead:
+#         omo doctor           # 统一健康检查
+#         omo inspect          # 统一检查
+#         omo audit freshness  # X2 freshness 巡检
 #
 # 用法:
 #   governance-agent.sh                       # 标准运行

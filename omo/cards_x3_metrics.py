@@ -1,5 +1,9 @@
 """CARDS X3 value metrics — card_history SQLite 聚合 (P44 R0).
 
+.. deprecated::
+    This script has been migrated to omo CLI. Use instead:
+        omo audit cards [--db PATH] [--json] [--output PATH]
+
 量化的 X3 value 维度:
 - card_count: 当前 card 总量 (按 type/status 分组)
 - status_distribution: status 分布 (proposed/active/done/archived)
