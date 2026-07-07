@@ -135,8 +135,10 @@ check_doc_freshness() {
     
     for doc in AGENTS.md CLAUDE.md; do
         if [ -f "$REPO_ROOT/$doc" ]; then
-            # 检查最后修改时间 (兼容 macOS stat -f %m 和 Linux stat -c %Y)
-            MOD_TIME=$(stat -f %m "$REPO_ROOT/$doc" 2>/dev/null || stat -c %Y "$REPO_ROOT/$doc" 2>/dev/null || echo 0)
+            # 检查最后修改时间 (GNU stat -c %Y 先: Linux CI; BSD stat -f %m 后: macOS 本地)
+            # 注意顺序不能反: GNU stat -f 是 --file-system 模式, 输出 "File:" 标题 exit 0 不 fail,
+            # 导致 BSD 先时 MOD_TIME 拿到垃圾多行值触发 set -u "File: unbound variable"
+            MOD_TIME=$(stat -c %Y "$REPO_ROOT/$doc" 2>/dev/null || stat -f %m "$REPO_ROOT/$doc" 2>/dev/null || echo 0)
             MOD_DAYS=$(( ($(date +%s) - "$MOD_TIME") / 86400 ))
             if [ "$MOD_DAYS" -gt 30 ]; then
                 warn "$doc 已 $MOD_DAYS 天未更新"
