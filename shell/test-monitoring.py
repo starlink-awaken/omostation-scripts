@@ -4,7 +4,6 @@
 
 import asyncio
 import json
-from pathlib import Path
 from datetime import datetime
 
 # 测试Minerva指标采集器
@@ -13,9 +12,15 @@ async def test_minerva_metrics():
     print("=== 测试Minerva业务指标采集器 ===")
     
     try:
-        from minerva.metrics import get_metrics_collector, record_research_attempt
+        from minerva.metrics import (
+            get_all_metrics,
+            get_metrics_collector,
+            record_research_attempt,
+            record_pipeline_execution,
+        )
         
-        collector = get_metrics_collector()
+        # 验证采集器可导入并初始化
+        get_metrics_collector()
         
         # 模拟一些研究尝试
         print("\n1. 模拟研究尝试:")
@@ -36,8 +41,6 @@ async def test_minerva_metrics():
         
         # 模拟Pipeline执行
         print("\n2. 模拟Pipeline执行:")
-        from minerva.metrics import record_pipeline_execution
-        
         record_pipeline_execution(
             pipeline_name="test-pipeline",
             steps=[
@@ -70,9 +73,14 @@ async def test_agora_metrics():
     print("=== 测试Agora Pipeline指标采集器 ===")
     
     try:
-        from agora.metrics import get_pipeline_collector, record_execution
+        from agora.metrics import (
+            get_all_pipeline_metrics,
+            get_pipeline_collector,
+            record_execution,
+        )
         
-        collector = get_pipeline_collector()
+        # 验证采集器可导入并初始化
+        get_pipeline_collector()
         
         # 模拟一些Pipeline执行
         print("\n1. 模拟Pipeline执行:")
@@ -118,16 +126,11 @@ async def test_enhanced_health():
     
     try:
         from agora.monitoring.enhanced_health_cli import health_check_full, format_health_result
-        from agora.registry import ServiceRegistry
-        from agora.router import Router
         
         # 创建模拟的args
         class MockArgs:
             json = False
             
-        registry = ServiceRegistry.load()
-        router = Router(registry, event_bus=None)
-        
         # 执行健康检查
         result = await health_check_full(MockArgs())
         
