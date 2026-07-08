@@ -71,13 +71,17 @@ def get_known_ports() -> dict[int, str]:
         8765: "minerva (Web, kairon)",
     }
 
-# 不作为"端口冲突"的连接引用模式 (其他项目连接 agora 的正常行为)
+# 不作为"端口冲突"的连接引用模式 (其他项目连接 agora/cockpit 的正常行为)
 PORT_REFERENCE_PATTERNS = [
-    "AGORA_MCP_PORT", "AGORA_ENDPOINT", "AGORA_MCP_ENDPOINT",
+    "AGORA_INTERNAL_PORT", "AGORA_MCP_PORT", "AGORA_MCP_HTTP_PORT",
+    "AGORA_MCP_SSE_PORT", "AGORA_DASHBOARD_PORT", "AGORA_METRICS_URL",
+    "AGORA_ENDPOINT", "AGORA_MCP_ENDPOINT", "AGORA_A2A_ENDPOINT",
+    "COCKPIT_DASHBOARD_PORT", "COCKPIT_DASHBOARD_URL",
     "agora_endpoint", "mcp_endpoint", "localhost:7430",
     "localhost:7422", "localhost:7431",
-    "Dashboard:", "Agora Dashboard", ":7430/health",
-    ":7430/api", ":7431/sse",
+    "Dashboard:", "Agora Dashboard", "Cockpit Dashboard",
+    ":7430/health", ":7430/api", ":7431/sse",
+    "localhost:8090",
 ]
 
 
