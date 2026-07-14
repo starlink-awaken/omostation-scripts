@@ -21,11 +21,9 @@ from lib.bootstrap import workspace_root, setup_omo_src
 ROOT = workspace_root()
 setup_omo_src()
 
-from omo.omo_ingress_paths import _drift_dir, _loop_dir
-from omo.omo_self_evolve import (
-    write_planned_self_evolution_tasks as _write_planned_tasks_runtime,
-    write_self_evolve_summary as _write_self_evolve_summary_runtime,
-)
+from omo.omo_ingress_paths import _drift_dir, _loop_dir, _self_evolve_dir
+from omo.omo_ingress_task_lifecycle import create_planned_task
+from omo.omo_io import write_text_atomic
 
 
 def _now_iso() -> str:
@@ -147,8 +145,92 @@ def emit_self_evolution_tasks() -> list[dict[str, Any]]:
 
 
 def write_planned_tasks(tasks: list[dict[str, Any]]) -> list[Path]:
+    """Write planned self-evolution tasks to .omo/tasks/planned/.
+
+    ��� P6-G3: 仅落 planned/, 永不入 active/ 除非 human approval.
+    """
     ts = _now_iso()
-    return _write_planned_tasks_runtime(ROOT, tasks, ts)
+    out_dir = ROOT / ".omo" / "tasks" / "planned"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+
+    for task in tasks:
+        out = out_dir / f"{task['id']}.yaml"
+        if out.exists():
+            paths.append(out)
+            continue
+
+        task_data = {
+            "id": task["id"],
+            "title": task["title"],
+            "status": "candidate",
+            "task_type": "governance",
+            "risk_level": "L1",
+            "depends_on": [],
+            "source_docs": [task["drift_ref"]],
+            "deliverables": [task["title"]],
+            "imported_via": "opc_p6_self_evolve",
+            "context_uri": f"bos://governance/tasks/planned/{task['id']}",
+            "assigned_to": None,
+            "dispatch_id": None,
+            "run_ref": None,
+            "approval_ref": None,
+            "review_ref": None,
+            "knowledge_refs": [],
+            "handoff_refs": [],
+            "entry_gate": ["P6 drift review accepted"],
+            "evidence_required": ["human approval granted before promotion"],
+            "test_plan": [
+                "python3 scripts/omo/omo_worker.py task promotion-readiness --omo-dir .omo"
+            ],
+            "allowed_operation_level": "L1",
+            "human_approval_required": bool(
+                task.get("human_approval_required", task["approval_required"])
+            ),
+            "approval_required": bool(task["approval_required"]),
+            "approval_state": task.get("approval_state", "awaiting_human"),
+            "created_at": ts,
+            "source": task["source"],
+            "drift_ref": task["drift_ref"],
+            "loop_history_ref": task.get(
+                "loop_history_ref", "runtime/omo/_control/evolution/loop/history.json"
+            ),
+            "review_lane": "opc-p6-self-evolution-board",
+            "prerequisite_for": "OPC-P6",
+            "red_lines": [
+                "self-evolution task 仅落 planned/, 永不入 active/ 除非 human approval"
+            ],
+            "next_action": "human reviewer approve in OMO audit queue before promoting to active/",
+            "metadata": {
+                "created_via": "opc_p6_self_evolve",
+                "generated_at": ts,
+            },
+        }
+        if task.get("last_run_at"):
+            task_data["last_run_at"] = task["last_run_at"]
+        if task.get("latest_week"):
+            task_data["latest_week"] = task["latest_week"]
+
+        create_planned_task(
+            ROOT / ".omo",
+            task_data=task_data,
+            ingress_plane="scripts/opc_p6_self_evolve.py",
+            source_ref=f"opc-p6-self-evolve:{task['id']}",
+            now=ts,
+        )
+        paths.append(out)
+    return paths
+
+
+def _write_self_evolve_summary(summary: dict[str, Any], generated_at: str) -> Path:
+    out_dir = _self_evolve_dir(ROOT)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{generated_at[:10]}.json"
+    write_text_atomic(
+        out_path,
+        json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+    )
+    return out_path
 
 
 def main() -> int:
@@ -162,7 +244,7 @@ def main() -> int:
         "tasks": [{"id": t["id"], "approval_required": t["approval_required"]} for t in tasks],
         "paths": [str(p.relative_to(ROOT)) for p in paths],
     }
-    out_path = _write_self_evolve_summary_runtime(ROOT, summary, summary["generated_at"])
+    out_path = _write_self_evolve_summary(summary, summary["generated_at"])
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     print(f"# wrote: {out_path}", file=sys.stderr)
