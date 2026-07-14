@@ -73,14 +73,29 @@ def get_known_ports() -> dict[int, str]:
 
 # 不作为"端口冲突"的连接引用模式 (其他项目连接 agora/cockpit 的正常行为)
 PORT_REFERENCE_PATTERNS = [
-    "AGORA_INTERNAL_PORT", "AGORA_MCP_PORT", "AGORA_MCP_HTTP_PORT",
-    "AGORA_MCP_SSE_PORT", "AGORA_DASHBOARD_PORT", "AGORA_METRICS_URL",
-    "AGORA_ENDPOINT", "AGORA_MCP_ENDPOINT", "AGORA_A2A_ENDPOINT",
-    "COCKPIT_DASHBOARD_PORT", "COCKPIT_DASHBOARD_URL",
-    "agora_endpoint", "mcp_endpoint", "localhost:7430",
-    "localhost:7422", "localhost:7431",
-    "Dashboard:", "Agora Dashboard", "Cockpit Dashboard",
-    ":7430/health", ":7430/api", ":7431/sse",
+    "AGORA_INTERNAL_PORT",
+    "AGORA_MCP_PORT",
+    "AGORA_MCP_HTTP_PORT",
+    "AGORA_MCP_SSE_PORT",
+    "AGORA_DASHBOARD_PORT",
+    "AGORA_METRICS_URL",
+    "AGORA_ENDPOINT",
+    "AGORA_MCP_ENDPOINT",
+    "AGORA_A2A_ENDPOINT",
+    "COCKPIT_DASHBOARD_PORT",
+    "COCKPIT_DASHBOARD_URL",
+    "agora_endpoint",
+    "mcp_endpoint",
+    "localhost:7430",
+    "localhost:7422",
+    "localhost:7431",
+    "Dashboard:",
+    "Agora Dashboard",
+    "Cockpit Dashboard",
+    "Web Dashboard (port 7430)",  # agora CLI help string for owned listener
+    ":7430/health",
+    ":7430/api",
+    ":7431/sse",
     "localhost:8090",
 ]
 
@@ -175,6 +190,10 @@ def check_doc_freshness() -> int:
     for rel, label in repo_docs:
         full = WORKSPACE / rel
         if not full.exists():
+            # projects/* may be uninitialized gitlinks in partial CI checkouts
+            if rel.startswith("projects/"):
+                print(f"⏭ {label} ({rel}): skip (submodule not present)")
+                continue
             print(f"⚠ {label} ({rel}): 文件不存在")
             violations += 1
             continue

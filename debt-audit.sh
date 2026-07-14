@@ -130,16 +130,31 @@ check_test_coverage() {
 
 # ── 4. 文档新鲜度检查 ──────────────────────────────────────────────────────────
 
+# Portable mtime as epoch seconds.
+# NEVER prefer GNU `stat -f` — on Linux it is --file-system mode, prints
+# "File: ..." banners (exit 0), and under `set -u` becomes: File: unbound variable.
+_doc_mtime_epoch() {
+    local path="$1"
+    local t=""
+    if t=$(stat -c %Y "$path" 2>/dev/null) && [[ "$t" =~ ^[0-9]+$ ]]; then
+        echo "$t"
+        return 0
+    fi
+    if t=$(stat -f %m "$path" 2>/dev/null) && [[ "$t" =~ ^[0-9]+$ ]]; then
+        echo "$t"
+        return 0
+    fi
+    echo 0
+}
+
 check_doc_freshness() {
     section "文档新鲜度检查"
     
     for doc in AGENTS.md CLAUDE.md; do
         if [ -f "$REPO_ROOT/$doc" ]; then
-            # 检查最后修改时间 (GNU stat -c %Y 先: Linux CI; BSD stat -f %m 后: macOS 本地)
-            # 注意顺序不能反: GNU stat -f 是 --file-system 模式, 输出 "File:" 标题 exit 0 不 fail,
-            # 导致 BSD 先时 MOD_TIME 拿到垃圾多行值触发 set -u "File: unbound variable"
-            MOD_TIME=$(stat -c %Y "$REPO_ROOT/$doc" 2>/dev/null || stat -f %m "$REPO_ROOT/$doc" 2>/dev/null || echo 0)
-            MOD_DAYS=$(( ($(date +%s) - "$MOD_TIME") / 86400 ))
+            MOD_TIME=$(_doc_mtime_epoch "$REPO_ROOT/$doc")
+            MOD_TIME=${MOD_TIME:-0}
+            MOD_DAYS=$(( ($(date +%s) - MOD_TIME) / 86400 ))
             if [ "$MOD_DAYS" -gt 30 ]; then
                 warn "$doc 已 $MOD_DAYS 天未更新"
             else
