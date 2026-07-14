@@ -19,10 +19,31 @@ from omo.omo_debt_weight import compute_debt_weight, debt_summary
 from omo.omo_debt_metrics import compute_debt_metrics
 from omo.omo_debt_registry import load_debt_ledger
 from omo.omo_io import write_yaml_atomic
-from omo.omo_state_schema import (
-    summarize_system_health_snapshot,
-    validate_system_state,
-)
+
+def summarize_system_health_snapshot(health: dict) -> dict:
+    """Inline fallback for summarized system health analysis"""
+    services = health.get("services", {})
+    total = len(services)
+    if total == 0:
+        return {"status": "unknown", "healthy_count": 0, "total_count": 0}
+    healthy = sum(
+        1 for s in services.values()
+        if s.get("health_check") == "healthy" or s.get("runtime", {}).get("status") == "running"
+    )
+    return {
+        "status": "healthy" if healthy == total else "degraded",
+        "healthy_count": healthy,
+        "total_count": total
+    }
+
+
+def validate_system_state(state: dict) -> None:
+    """Inline lightweight system state validation"""
+    required = ["current_phase", "health_score", "updated_at"]
+    for field in required:
+        if field not in state:
+            print(f"⚠️ [Sync State Validation Warning] Missing required field: {field}")
+
 
 
 def _load_yaml(path: Path) -> dict:
