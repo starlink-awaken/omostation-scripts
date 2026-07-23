@@ -17,3 +17,7 @@ dist/
 *.log
 .DS_Store
 *.local.json
+
+# vault-health agent 生成文件
+com.ecos.vault-health.plist
+vault-health-agent.sh
