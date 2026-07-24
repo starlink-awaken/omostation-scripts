@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import yaml
 import argparse
 import shutil
 import sys
@@ -11,19 +10,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from lib.bootstrap import workspace_root
 from lib.yaml_utils import load_yaml_or_default
+
 ROOT = workspace_root()
 OMO_SRC = ROOT / "projects" / "omo" / "src"
 if str(OMO_SRC) not in sys.path:
     sys.path.insert(0, str(OMO_SRC))
 
-from omo.omo_handoff_index import write_handoff_index  # noqa: E402
-from omo.omo_io import ensure_parent_dir  # noqa: E402
-from omo.omo_metrics import write_worker_utilization_summary  # noqa: E402
-from omo.omo_worker_dispatch import dispatch_task  # noqa: E402
-from omo.omo_worker_status import scan_runtime_watchdog, update_dispatch_checkpoint  # noqa: E402
-
+from omo.omo_handoff_index import write_handoff_index
+from omo.omo_io import ensure_parent_dir
+from omo.omo_metrics import write_worker_utilization_summary
+from omo.omo_worker_dispatch import dispatch_task
+from omo.omo_worker_status import scan_runtime_watchdog, update_dispatch_checkpoint
 
 DEFAULT_EVIDENCE_ROOT = ROOT / ".omo" / "tasks" / "registry" / "done"
 FIXED_NOW = "2026-06-12T10:00:00Z"

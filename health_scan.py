@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 from lib.bootstrap import workspace_root
@@ -113,7 +113,7 @@ def scan_project(proj: dict) -> dict:
 
 def main():
     print("# 跨项目健康报告\n")
-    print(f"_生成时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}_\n")
+    print(f"_生成时间: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}_\n")
 
     results = []
     for proj in ACTIVE_PROJECTS:
@@ -169,7 +169,7 @@ def main():
         "operator": "cron",
         "detail": f"{projects_ok}/{projects_total} passed, "
                   f"{sum(r['tests'].get('failed', 0) for r in results)} total failures",
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
     }
     os.makedirs(str(gov_log.parent), exist_ok=True)
     with open(str(gov_log), "a") as f:

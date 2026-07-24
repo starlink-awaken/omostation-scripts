@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-
 from lib.bootstrap import workspace_root
 
 WORKSPACE = workspace_root()

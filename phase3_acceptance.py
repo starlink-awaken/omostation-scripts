@@ -11,8 +11,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-
 from lib.bootstrap import workspace_root
+
 ROOT = workspace_root()
 DEFAULT_REPORT = ROOT / ".omo" / "summaries" / "phase3-acceptance-report.md"
 

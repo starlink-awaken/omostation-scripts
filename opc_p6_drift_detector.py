@@ -27,11 +27,19 @@ sys.path.insert(0, str(ROOT / "projects" / "omo" / "src"))
 
 from omo.omo_drift_detector import (
     build_drift_report,
-    detect_agora_bypass as _detect_agora_bypass,
-    detect_doc_drift as _detect_doc_drift,
-    detect_duplicate_facts as _detect_duplicate_facts,
-    detect_entry_drift as _detect_entry_drift,
     write_drift_report,
+)
+from omo.omo_drift_detector import (
+    detect_agora_bypass as _detect_agora_bypass,
+)
+from omo.omo_drift_detector import (
+    detect_doc_drift as _detect_doc_drift,
+)
+from omo.omo_drift_detector import (
+    detect_duplicate_facts as _detect_duplicate_facts,
+)
+from omo.omo_drift_detector import (
+    detect_entry_drift as _detect_entry_drift,
 )
 
 

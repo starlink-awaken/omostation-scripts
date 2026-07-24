@@ -11,8 +11,7 @@
 
 from __future__ import annotations
 
-
-from lib.bootstrap import workspace_root, setup_omo_src
+from lib.bootstrap import setup_omo_src, workspace_root
 
 setup_omo_src()
 

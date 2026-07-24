@@ -27,7 +27,6 @@ setup_omo_src()
 
 from omo.omo_ingress_paths import _runtime_omo_root
 
-
 REPOS = [
     ("workspace", "."),
     ("omo", "projects/omo"),

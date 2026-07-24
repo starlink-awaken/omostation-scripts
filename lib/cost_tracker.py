@@ -17,9 +17,9 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 DEFAULT_DB_PATH = Path.home() / ".kos" / "accounting" / "usage.db"
 
@@ -74,7 +74,7 @@ class CostTracker:
         org: str = "starlink-core",
     ) -> None:
         """记录一次 API 调用的成本。"""
-        ts = datetime.now(timezone.utc).isoformat()
+        ts = datetime.now(UTC).isoformat()
         self.conn.execute(
             "INSERT INTO resource_usage (caller, service, tokens_input, tokens_output, cost_usd, timestamp, org) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -106,7 +106,7 @@ class CostTracker:
             self._conn.close()
             self._conn = None
 
-    def __enter__(self) -> CostTracker:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args: Any) -> None:

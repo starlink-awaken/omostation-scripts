@@ -17,7 +17,6 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "omo"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -145,7 +144,7 @@ class TestMainCLI:
         )
         monkeypatch.setattr(audit, "OMO_DIR", tmp_path / "omo")
         (tmp_path / "omo" / "debt" / "items").mkdir(parents=True)
-        result = subprocess.run(  # noqa: F841
+        result = subprocess.run(
             [sys.executable, str(SCRIPTS_DIR / "x2_freshness_audit.py"), "--dry-run"],
             capture_output=True, text=True, timeout=120,
         )

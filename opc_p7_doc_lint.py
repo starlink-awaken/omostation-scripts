@@ -16,16 +16,17 @@ from __future__ import annotations
 
 import sys
 
-from lib.bootstrap import workspace_root, setup_omo_src
+from lib.bootstrap import setup_omo_src, workspace_root
 
 ROOT = workspace_root()
 setup_omo_src()
 
 from omo.omo_doc_lint import (
     run_doc_lint,
+)
+from omo.omo_doc_lint import (
     utc_now_iso as _now_iso_runtime,
 )
-
 
 KEY_DOCS = [
     "docs/PANORAMA.md",

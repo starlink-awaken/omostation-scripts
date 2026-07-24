@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 
-
 def check_file(filepath: Path) -> bool:
     """Return True if file passes (has the import or is exempt)."""
     content = filepath.read_text(encoding="utf-8")

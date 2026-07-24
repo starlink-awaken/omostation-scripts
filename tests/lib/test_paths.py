@@ -4,26 +4,25 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 SCRIPTS_DIR = Path(__file__).resolve().parents[2]
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from lib.paths import (
-    WORKSPACE,
-    OMO_DIR,
+    BOS_SERVICES_YAML,
     CONTROL_DIR,
-    TRUTH_DIR,
-    KNOWLEDGE_DIR,
     DELIVERY_DIR,
-    SYSTEM_YAML,
     GOALS_YAML,
+    KNOWLEDGE_DIR,
+    OMO_DIR,
+    PORT_REGISTRY,
+    PROJECT_REGISTRY,
+    REGISTRY_DIR,
+    SYSTEM_YAML,
     TASKS_ACTIVE,
     TASKS_PLANNED,
-    REGISTRY_DIR,
-    BOS_SERVICES_YAML,
-    PROJECT_REGISTRY,
-    PORT_REGISTRY,
+    TRUTH_DIR,
+    WORKSPACE,
 )
 
 

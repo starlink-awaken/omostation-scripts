@@ -5,18 +5,17 @@ import re
 import sys
 from pathlib import Path
 
-
 SCRIPTS_DIR = Path(__file__).resolve().parents[2]
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from lib.validators import (
     LintReport,
-    require_text,
+    match_pattern_list,
     require_exists,
     require_fields,
     require_list_min,
-    match_pattern_list,
+    require_text,
 )
 
 

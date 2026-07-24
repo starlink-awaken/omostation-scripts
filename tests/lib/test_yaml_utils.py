@@ -10,7 +10,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[2]
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from lib.yaml_utils import load_yaml, load_yaml_multi, write_yaml_atomic, load_yaml_or_default
+from lib.yaml_utils import load_yaml, load_yaml_multi, load_yaml_or_default, write_yaml_atomic
 
 
 class TestLoadYaml:

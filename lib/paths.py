@@ -12,7 +12,6 @@ from pathlib import Path
 
 from lib.bootstrap import workspace_root
 
-
 # ── workspace ──
 WORKSPACE = workspace_root()
 

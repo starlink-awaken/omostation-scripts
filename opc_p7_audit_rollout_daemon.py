@@ -45,20 +45,25 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.bootstrap import workspace_root, setup_omo_src
+from lib.bootstrap import setup_omo_src, workspace_root
 
 ROOT = workspace_root()
 setup_omo_src()
 
 from omo.omo_audit_rollout import (
     history_index_path as _history_index_path_runtime,
+)
+from omo.omo_audit_rollout import (
     update_history_index as _update_history_index_runtime,
+)
+from omo.omo_audit_rollout import (
     write_daemon_summary as _write_daemon_summary_runtime,
+)
+from omo.omo_audit_rollout import (
     write_drift_history as _write_drift_history_runtime,
 )
 from omo.omo_ingress_paths import _runtime_omo_root
 from omo.omo_io import ensure_parent_dir
-
 
 REPOS = [
     ("workspace", "."),

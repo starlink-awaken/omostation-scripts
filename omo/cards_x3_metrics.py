@@ -19,7 +19,7 @@ import argparse
 import json
 import sqlite3
 import sys
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -89,7 +89,7 @@ def collect_metrics(db_path: Path) -> dict:
             now = datetime.now(UTC)
             for (created_at,) in cursor.fetchall():
                 try:
-                    dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    dt = datetime.fromisoformat(created_at)
                     if dt.tzinfo is None:
                         dt = dt.replace(tzinfo=UTC)
                     ages.append((now - dt).days)

@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 from lib.paths import SYSTEM_YAML
@@ -51,7 +51,7 @@ def check_govlog_age() -> dict:
 
     try:
         last_ts = datetime.fromisoformat(ts_str)
-        age_hours = (datetime.now(timezone.utc) - last_ts).total_seconds() / 3600
+        age_hours = (datetime.now(UTC) - last_ts).total_seconds() / 3600
     except (ValueError, TypeError):
         return {"status": "error", "msg": f"governance.jsonl: unparseable ts: {ts_str}"}
 
@@ -118,7 +118,7 @@ def main() -> int:
     warnings = [k for k, v in checks.items() if v.get("status") == "warning"]
 
     report = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "checks": checks,
         "healthy": len(errors) == 0,
     }

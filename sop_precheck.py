@@ -333,7 +333,7 @@ def _assess_risks(tools: list[dict], helper_functions: set[str], non_compliant: 
             "category": "返回类型不一致",
             "detail": f"混合使用 {types_str}，跨项目统一时需逐个确认",
         })
-    elif len(return_types) == 1 and list(return_types.keys())[0] == "str":
+    elif len(return_types) == 1 and next(iter(return_types.keys())) == "str":
         risks.append({
             "level": "低",
             "category": "返回 JSON 字符串",

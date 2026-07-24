@@ -231,7 +231,7 @@ def main() -> int:
     # 1. CLI 入口一致性
     print("🔍 检查 CLI 入口一致性...")
     cli_entries = collect_cli_from_code()
-    print(f"   发现 {len(cli_entries)} 个 CLI 入口点 (from {len(set(k.split(':')[0] for k in cli_entries))} 个项目)")
+    print(f"   发现 {len(cli_entries)} 个 CLI 入口点 (from {len({k.split(':')[0] for k in cli_entries})} 个项目)")
     # 简单验证: 每个 CLI 至少有一个非空 module path
     for key, module in sorted(cli_entries.items()):
         if not module or module in ('""', "''"):

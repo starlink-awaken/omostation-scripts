@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-
 from lib.bootstrap import workspace_root
 from lib.paths import (
     OMO_DIR,

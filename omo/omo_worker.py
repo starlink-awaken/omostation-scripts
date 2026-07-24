@@ -13,33 +13,17 @@ from __future__ import annotations
 import argparse
 import shlex
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 try:
     from scripts.omo_admission import evaluate_worker_envelope, request_conditional_approval
-    from scripts.omo_governance import propose_truth_mutation
     from scripts.omo_contract_request import (
         build_contract_proposal,
         build_contract_request,
         contract_request_ref,
     )
-    from scripts.omo_io import write_text_atomic, write_yaml_atomic
-    from scripts.omo_handoff_index import write_handoff_index
-    from scripts.omo_metrics import write_worker_utilization_summary
-    from scripts.omo_promotion_approval import evaluate_promotion_approval
-    from scripts.omo_promotion_history import build_promotion_history
-    from scripts.omo_promotion_request import (
-        build_promotion_approval_proposal,
-        build_promotion_approval_request,
-        promotion_approval_ref,
-    )
-    from scripts.omo_promotion_approval_status import (
-        build_promotion_approval_status_packet,
-        render_promotion_approval_status_markdown,
-    )
-    from scripts.omo_promotion_approval_history import build_promotion_approval_history
-    from scripts.omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
+    from scripts.omo_governance import propose_truth_mutation
     from scripts.omo_governance_overlay import build_governance_overlay_status
     from scripts.omo_governance_overlay_approval_prep import (
         build_governance_overlay_approval_prep_history,
@@ -51,13 +35,29 @@ try:
     from scripts.omo_governance_overlay_approval_prep_trend import build_governance_overlay_approval_prep_trend
     from scripts.omo_governance_overlay_loop import plan_governance_overlay_cycle
     from scripts.omo_governance_overlay_targets import evaluate_governance_overlay_planned_target
+    from scripts.omo_handoff_index import write_handoff_index
+    from scripts.omo_io import write_text_atomic, write_yaml_atomic
+    from scripts.omo_metrics import write_worker_utilization_summary
+    from scripts.omo_promotion_approval import evaluate_promotion_approval
+    from scripts.omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
+    from scripts.omo_promotion_approval_history import build_promotion_approval_history
+    from scripts.omo_promotion_approval_status import (
+        build_promotion_approval_status_packet,
+        render_promotion_approval_status_markdown,
+    )
+    from scripts.omo_promotion_history import build_promotion_history
     from scripts.omo_promotion_readiness import (
         build_promotion_readiness_packet,
         render_promotion_readiness_markdown,
     )
-    from scripts.omo_rules import evaluate_rule_bundle
-    from scripts.omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
+    from scripts.omo_promotion_request import (
+        build_promotion_approval_proposal,
+        build_promotion_approval_request,
+        promotion_approval_ref,
+    )
     from scripts.omo_redaction import redact_sensitive_text
+    from scripts.omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
+    from scripts.omo_rules import evaluate_rule_bundle
     from scripts.omo_task_schema import validate_active_tasks, validate_planned_tasks, validate_task_file
 except ModuleNotFoundError:
     # P42-W0-B 现代化: scripts.omo_X → omo.omo_X (旧 scripts/ 路径已废弃, 模块迁到 projects/omo/src/omo/)
@@ -73,28 +73,12 @@ except ModuleNotFoundError:
     if str(_omo_src) not in sys.path:
         sys.path.insert(0, str(_omo_src))
     from omo.omo_admission import evaluate_worker_envelope, request_conditional_approval
-    from omo.omo_governance import propose_truth_mutation
     from omo.omo_contract_request import (
         build_contract_proposal,
         build_contract_request,
         contract_request_ref,
     )
-    from omo.omo_io import write_text_atomic, write_yaml_atomic
-    from omo.omo_handoff_index import write_handoff_index
-    from omo.omo_metrics import write_worker_utilization_summary
-    from omo.omo_promotion_approval import evaluate_promotion_approval
-    from omo.omo_promotion_history import build_promotion_history
-    from omo.omo_promotion_request import (
-        build_promotion_approval_proposal,
-        build_promotion_approval_request,
-        promotion_approval_ref,
-    )
-    from omo.omo_promotion_approval_status import (
-        build_promotion_approval_status_packet,
-        render_promotion_approval_status_markdown,
-    )
-    from omo.omo_promotion_approval_history import build_promotion_approval_history
-    from omo.omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
+    from omo.omo_governance import propose_truth_mutation
     from omo.omo_governance_overlay import build_governance_overlay_status
     from omo.omo_governance_overlay_approval_prep import (
         build_governance_overlay_approval_prep_history,
@@ -106,10 +90,26 @@ except ModuleNotFoundError:
     from omo.omo_governance_overlay_approval_prep_trend import build_governance_overlay_approval_prep_trend
     from omo.omo_governance_overlay_loop import plan_governance_overlay_cycle
     from omo.omo_governance_overlay_targets import evaluate_governance_overlay_planned_target
+    from omo.omo_handoff_index import write_handoff_index
+    from omo.omo_io import write_text_atomic, write_yaml_atomic
+    from omo.omo_metrics import write_worker_utilization_summary
+    from omo.omo_promotion_approval import evaluate_promotion_approval
+    from omo.omo_promotion_approval_analytics import build_promotion_approval_analytics_packet
+    from omo.omo_promotion_approval_history import build_promotion_approval_history
+    from omo.omo_promotion_approval_status import (
+        build_promotion_approval_status_packet,
+        render_promotion_approval_status_markdown,
+    )
+    from omo.omo_promotion_history import build_promotion_history
     from omo.omo_promotion_readiness import build_promotion_readiness_packet, render_promotion_readiness_markdown
-    from omo.omo_rules import evaluate_rule_bundle
-    from omo.omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
+    from omo.omo_promotion_request import (
+        build_promotion_approval_proposal,
+        build_promotion_approval_request,
+        promotion_approval_ref,
+    )
     from omo.omo_redaction import redact_sensitive_text
+    from omo.omo_rollout import accept_rollout_envelope, evaluate_rollout_envelope
+    from omo.omo_rules import evaluate_rule_bundle
     from omo.omo_task_schema import validate_active_tasks, validate_planned_tasks, validate_task_file
     from omo.omo_worker_cmd_task import execute_task_command as package_execute_task_command
 
@@ -117,17 +117,17 @@ except ModuleNotFoundError:
 def _timestamp_slug(now: str | None = None) -> str:
     if now:
         return now.replace("-", "").replace(":", "").replace("T", "-").replace("Z", "")
-    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _parse_iso8601(value: str | None) -> datetime | None:
     if not value:
         return None
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return datetime.fromisoformat(value)
 
 
 def _load_yaml(path: Path) -> dict:
@@ -314,7 +314,7 @@ def update_dispatch_checkpoint(
 
 
 def scan_runtime_watchdog(root: Path, now: str | None = None, omo_dir: str | Path = ".omo") -> dict[str, object]:
-    current_time = _parse_iso8601(now) or datetime.now(timezone.utc)
+    current_time = _parse_iso8601(now) or datetime.now(UTC)
     status = collect_worker_status(root, omo_dir=omo_dir)
     runs: list[dict[str, object]] = []
     counts = {"healthy": 0, "warning": 0, "stale": 0, "reclaim_due": 0}

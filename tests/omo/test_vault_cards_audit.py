@@ -4,9 +4,8 @@ from __future__ import annotations
 import sqlite3
 import subprocess
 import sys
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "omo"  # tests/omo → scripts → scripts/omo
 sys.path.insert(0, str(SCRIPTS_DIR))

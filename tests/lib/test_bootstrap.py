@@ -4,13 +4,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 # Ensure scripts/ is on sys.path
 SCRIPTS_DIR = Path(__file__).resolve().parents[2]
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from lib.bootstrap import workspace_root, omo_src_path, scripts_dir, setup_omo_src
+from lib.bootstrap import omo_src_path, scripts_dir, setup_omo_src, workspace_root
 
 
 class TestWorkspaceRoot:

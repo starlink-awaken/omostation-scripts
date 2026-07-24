@@ -4,10 +4,10 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
-from lib.bootstrap import workspace_root, omo_src_path
+from lib.bootstrap import omo_src_path, workspace_root
 from lib.yaml_utils import load_yaml_multi
 
 WORKSPACE_ROOT = workspace_root()
@@ -15,10 +15,11 @@ OMO_SRC = omo_src_path()
 if str(OMO_SRC) not in sys.path:
     sys.path.insert(0, str(OMO_SRC))
 
-from omo.omo_debt_weight import compute_debt_weight, debt_summary
 from omo.omo_debt_metrics import compute_debt_metrics
 from omo.omo_debt_registry import load_debt_ledger
+from omo.omo_debt_weight import compute_debt_weight, debt_summary
 from omo.omo_io import write_yaml_atomic
+
 
 def summarize_system_health_snapshot(health: dict) -> dict:
     """Inline fallback for summarized system health analysis"""
@@ -101,7 +102,7 @@ def _parse_health_score(output: str | None, fallback: float) -> float:
 def _parse_iso8601(value: str | None) -> datetime | None:
     if not value:
         return None
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return datetime.fromisoformat(value)
 
 
 def _write_divergence_detail_artifact(omo_dir: Path, name: str, payload: dict[str, object]) -> str:
@@ -423,7 +424,7 @@ def sync_state(
     state = _load_yaml(state_path)
     health_snapshot = _load_yaml(health_snapshot_path)
     goals = _load_yaml(goals_path)
-    current_time = _parse_iso8601(now) or datetime.now(timezone.utc)
+    current_time = _parse_iso8601(now) or datetime.now(UTC)
     goal_phase = goals.get("phase")
     goal_wave = goals.get("current_wave")
     goal_status = goals.get("status")
@@ -539,7 +540,7 @@ def sync_state(
             xplane_factor = float(_xp.get("xplane_factor", 1.0))
             state["xplane_score"] = _xp.get("xplane_score", 0.0)
             state["xplane_coverage"] = _xp.get("overall_coverage", 0.0)
-        except Exception:  # noqa: BLE001 — X-Plane 故障不得阻断健康同步
+        except Exception:
             xplane_factor = 1.0
     xplane_factor = xplane_factor or 1.0  # NaN/None 终极兜底,保证 health 公式总有合法值
     state["health_score_raw"] = raw_health

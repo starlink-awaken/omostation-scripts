@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.bootstrap import workspace_root, setup_omo_src
+from lib.bootstrap import setup_omo_src, workspace_root
 
 ROOT = workspace_root()
 setup_omo_src()
@@ -23,8 +23,14 @@ setup_omo_src()
 from omo.omo_ingress_paths import _evolution_dir
 from omo.omo_radar_history import (
     classify_candidate as _classify_candidate_runtime,
+)
+from omo.omo_radar_history import (
     load_radar_history as _load_history_runtime,
+)
+from omo.omo_radar_history import (
     update_radar_history as _update_history_runtime,
+)
+from omo.omo_radar_history import (
     write_radar_snapshot as _write_daily_snapshot_runtime,
 )
 from omo.omo_weekly_loop import write_mof_state_bridge_snapshot
@@ -77,8 +83,8 @@ def main() -> int:
     history = _update_history(payload)
     snapshot_path = _write_daily_snapshot(payload, history)
     print(f"# trigger: {payload['trigger_source']}", file=sys.stderr)
-    print(f"# history: {str(_history_path().relative_to(ROOT))}", file=sys.stderr)
-    print(f"# snapshot: {str(snapshot_path.relative_to(ROOT))}", file=sys.stderr)
+    print(f"# history: {_history_path().relative_to(ROOT)!s}", file=sys.stderr)
+    print(f"# snapshot: {snapshot_path.relative_to(ROOT)!s}", file=sys.stderr)
     print(json.dumps({"payload": payload, "history": history.get("summary", {})}, ensure_ascii=False, indent=2))
     # P5 增强 (2026-06-14): cron wrapper 末尾跑 mof-state-bridge --strict
     # 失同步写 runtime/omo/_delivery/audit-rollout/{date}-mof-state-bridge.json

@@ -16,20 +16,36 @@ import os
 import sys
 from typing import Any
 
-from lib.bootstrap import workspace_root, setup_omo_src
+from lib.bootstrap import setup_omo_src, workspace_root
 
 ROOT = workspace_root()
 setup_omo_src()
 
 from omo.omo_release_cycle import (
     gather_changes as _gather_changes_runtime,
+)
+from omo.omo_release_cycle import (
     gather_debt as _gather_debt_runtime,
+)
+from omo.omo_release_cycle import (
     gather_validation as _gather_validation_runtime,
+)
+from omo.omo_release_cycle import (
     load_release_index as _load_release_index_runtime,
+)
+from omo.omo_release_cycle import (
     next_release_version as _next_version_runtime,
+)
+from omo.omo_release_cycle import (
     run_release_cycle,
+)
+from omo.omo_release_cycle import (
     trigger_source as _trigger_source_runtime,
+)
+from omo.omo_release_cycle import (
     utc_now_iso as _now_iso_runtime,
+)
+from omo.omo_release_cycle import (
     utc_today as _today_runtime,
 )
 

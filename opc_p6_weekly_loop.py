@@ -17,27 +17,51 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from lib.bootstrap import workspace_root, setup_omo_src
+from lib.bootstrap import setup_omo_src, workspace_root
 
 ROOT = workspace_root()
 setup_omo_src()
 
 from omo.omo_weekly_loop import (
     call_drift as _call_drift_runtime,
+)
+from omo.omo_weekly_loop import (
     call_radar as _call_radar_runtime,
+)
+from omo.omo_weekly_loop import (
     consecutive_weeks as _consecutive_weeks_runtime,
+)
+from omo.omo_weekly_loop import (
     load_loop_history as _load_loop_history_runtime,
+)
+from omo.omo_weekly_loop import (
     run_mof_state_bridge_cron_snapshot,
     run_weekly_loop,
-    stage_audit as _stage_audit_runtime,
-    stage_gap as _stage_gap_runtime,
-    stage_retro as _stage_retro_runtime,
-    stage_swarm as _stage_swarm_runtime,
-    stage_task as _stage_task_runtime,
-    update_loop_history as _update_loop_history_runtime,
-    utc_now_iso as _now_iso_runtime,
-    week_id as _week_id_runtime,
     write_weekly_evidence,
+)
+from omo.omo_weekly_loop import (
+    stage_audit as _stage_audit_runtime,
+)
+from omo.omo_weekly_loop import (
+    stage_gap as _stage_gap_runtime,
+)
+from omo.omo_weekly_loop import (
+    stage_retro as _stage_retro_runtime,
+)
+from omo.omo_weekly_loop import (
+    stage_swarm as _stage_swarm_runtime,
+)
+from omo.omo_weekly_loop import (
+    stage_task as _stage_task_runtime,
+)
+from omo.omo_weekly_loop import (
+    update_loop_history as _update_loop_history_runtime,
+)
+from omo.omo_weekly_loop import (
+    utc_now_iso as _now_iso_runtime,
+)
+from omo.omo_weekly_loop import (
+    week_id as _week_id_runtime,
 )
 
 

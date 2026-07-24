@@ -3,11 +3,10 @@
 OPC Phase 1.4: MemTheta Nightly Filter Job
 Runs the memory eviction and decay filter operator every night.
 """
-import sys
 import logging
+import sys
 
 # Setup paths to import kairon packages
-
 from lib.bootstrap import workspace_root
 
 WORKSPACE = workspace_root()

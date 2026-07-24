@@ -2,8 +2,7 @@
 """P6 self-evolution approval board thin wrapper."""
 from __future__ import annotations
 
-
-from lib.bootstrap import workspace_root, setup_omo_src
+from lib.bootstrap import setup_omo_src, workspace_root
 
 ROOT = workspace_root()
 setup_omo_src()

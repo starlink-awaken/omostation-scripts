@@ -5,7 +5,6 @@ import sys
 
 from lib.bootstrap import workspace_root
 
-
 ROOT = workspace_root()
 
 TARGETS = {

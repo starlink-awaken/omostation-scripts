@@ -12,7 +12,6 @@ import sys
 from lib.bootstrap import workspace_root
 from lib.yaml_utils import load_yaml
 
-
 REQUIRED_FIELDS = ["name", "version", "category", "status", "description"]
 ALLOWED_STATUSES = {"active", "draft", "deprecated", "planned", "partial"}
 ALLOWED_CATEGORIES = {

@@ -10,8 +10,7 @@
 
 from __future__ import annotations
 
-
-from lib.paths import OMO_DIR, SYSTEM_YAML, GOALS_YAML
+from lib.paths import GOALS_YAML, OMO_DIR, SYSTEM_YAML
 from lib.yaml_utils import load_yaml, load_yaml_multi
 
 

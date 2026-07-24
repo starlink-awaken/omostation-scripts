@@ -6,6 +6,7 @@ import asyncio
 import json
 from datetime import datetime
 
+
 # 测试Minerva指标采集器
 async def test_minerva_metrics():
     """测试Minerva业务指标采集器"""
@@ -15,8 +16,8 @@ async def test_minerva_metrics():
         from minerva.metrics import (
             get_all_metrics,
             get_metrics_collector,
-            record_research_attempt,
             record_pipeline_execution,
+            record_research_attempt,
         )
         
         # 验证采集器可导入并初始化
@@ -125,7 +126,7 @@ async def test_enhanced_health():
     print("=== 测试增强健康检查 ===")
     
     try:
-        from agora.monitoring.enhanced_health_cli import health_check_full, format_health_result
+        from agora.monitoring.enhanced_health_cli import format_health_result, health_check_full
         
         # 创建模拟的args
         class MockArgs:
@@ -152,24 +153,24 @@ async def main():
     """运行所有测试"""
     print("🧪 开始监控体系功能测试")
     print(f"测试时间: {datetime.now().isoformat()}")
-    print("")
+    print()
     
     results = {}
     
     # 测试Minerva指标采集器
     print("测试1/3: Minerva业务指标采集器")
     results["minerva"] = await test_minerva_metrics()
-    print("")
+    print()
     
     # 测试Agora Pipeline指标采集器
     print("测试2/3: Agora Pipeline指标采集器")
     results["agora"] = await test_agora_metrics()
-    print("")
+    print()
     
     # 测试增强健康检查
     print("测试3/3: 增强健康检查")
     results["health"] = await test_enhanced_health()
-    print("")
+    print()
     
     # 总结结果
     print("="*60)
@@ -179,7 +180,7 @@ async def main():
         print(f"  {test_name}: {status}")
     
     all_passed = all(results.values())
-    print("")
+    print()
     if all_passed:
         print("🎉 所有测试通过！监控体系基础功能正常工作。")
     else:

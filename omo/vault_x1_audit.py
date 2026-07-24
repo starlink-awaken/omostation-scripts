@@ -18,7 +18,7 @@ import hashlib
 import json
 import subprocess
 import sys
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -57,7 +57,7 @@ def content_hash(file_path: Path) -> str:
     try:
         content = file_path.read_bytes()
         return hashlib.sha256(content).hexdigest()[:16]
-    except (OSError, IOError):
+    except OSError:
         return "ERROR"
 
 

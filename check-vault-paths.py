@@ -70,7 +70,7 @@ def resolve_path(key: str, ssot: dict | None = None) -> str:
     if env_key in os.environ:
         return os.path.expanduser(os.environ[env_key])
     paths = ssot.get("paths", {})
-    if key in paths and paths[key]:
+    if paths.get(key):
         return os.path.expanduser(paths[key])
     print(
         f"ERROR: vault-paths.yaml 缺必填字段 '{key}'(env 也无 {env_key})",
@@ -175,7 +175,7 @@ def load_port_ssot() -> set[int]:
     if not PORT_SSOT_PATH.exists():
         return set()
     data = load_yaml(PORT_SSOT_PATH) or {}
-    return {int(p) for p in data.get("ports", {}).keys() if str(p).isdigit()}
+    return {int(p) for p in data.get("ports", {}) if str(p).isdigit()}
 
 
 def scan_for_port_hardcodes(root: Path = Path("projects/")) -> list[tuple[Path, int, int, str]]:
@@ -197,7 +197,7 @@ def scan_for_port_hardcodes(root: Path = Path("projects/")) -> list[tuple[Path, 
         for lineno, line in enumerate(content.splitlines(), 1):
             # 排除整行注释(# 开头 / # ... inline)/纯字符串示例
             stripped = line.lstrip()
-            if stripped.startswith("#") or stripped.startswith("//"):
+            if stripped.startswith(("#", "//")):
                 continue
             for pat in PORT_HARDCODED_TYPES:
                 m = re.search(pat, line)
