@@ -14,6 +14,14 @@ from lib.paths import GOALS_YAML, OMO_DIR, SYSTEM_YAML
 from lib.yaml_utils import load_yaml, load_yaml_multi
 
 
+def _load_task(path):
+    """Read the first mapping from a task file, including multi-document YAML."""
+    for document in load_yaml_multi(path):
+        if isinstance(document, dict):
+            return document
+    return {}
+
+
 def _current_phase(goals_data: dict) -> int | None:
     phase = goals_data.get("phase")
     return phase if isinstance(phase, int) else None
@@ -60,7 +68,7 @@ def main() -> int:
     done_ids: set[str] = set()  # done 历史 task 不算 orphaned (已完成的可在 current goals 之外)
     for group in ("active", "blocked", "done"):
         for task_file in (omo_dir / "tasks" / group).rglob("*.yaml"):
-            task = load_yaml(task_file)
+            task = _load_task(task_file)
             task_id = task.get("id")
             if not task_id:
                 continue
@@ -78,7 +86,7 @@ def main() -> int:
         if not archive_root.exists():
             continue
         for task_file in archive_root.rglob("*.yaml"):
-            task = load_yaml(task_file)
+            task = _load_task(task_file)
             task_id = task.get("id")
             if not task_id:
                 continue
