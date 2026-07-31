@@ -1,20 +1,19 @@
 # omostation-scripts
 
 > Omostation 工作站的运维脚本和自动化工具集合 (独立 git 子模块)。
-> 顶层 66 个活跃脚本 + 5 个子目录 (`lib/`, `omo/`, `shell/`, `install/`, `archive/`)。
-> 全量分类索引见 [INDEX.md](INDEX.md)，架构设计见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+> 脚本清单和目录分类以 [INDEX.md](INDEX.md) 为准，架构设计见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 目录结构
 
 ```
 scripts/
-├── lib/         ── 共享基础设施 (9 模块: bootstrap, paths, yaml_utils, cli, validators, ssot_checker, cost_tracker, shell/common.sh)
-├── tests/       ── 单元测试 (lib/ 7 模块 105 tests + omo/ 2 脚本)
+├── lib/         ── 共享基础设施（模块清单见 INDEX.md）
+├── tests/       ── 单元测试（测试入口见下文）
 ├── omo/         ── OMO 治理脚本 (governance-agent, omo_worker, x1/x2/x3 审计)
 ├── shell/       ── Shell 工具 (backup, restore, bridge install, watchdog)
 ├── install/     ── 安装向导 (setup.sh)
-├── archive/     ── 已归档的历史/演示/废弃脚本 (29 个, 不再被 CI 引用)
-└── (顶层 66 个活跃脚本, 按前缀分类: check-*, opc_*, x1-x4-*, debt-*, 等)
+├── archive/     ── 已归档的历史/演示/废弃脚本（清单见 INDEX.md）
+└── (顶层活跃脚本，按前缀分类，见 INDEX.md)
 ```
 
 ## 用法
@@ -29,7 +28,7 @@ git submodule update --init scripts/
 ## 测试
 
 ```bash
-# lib/ 单元测试 (7 模块 105 tests, 0.10s)
+# lib/ 单元测试
 python3 -m pytest tests/lib/ -v
 
 # 本地 CI 冒烟 (含 lib/ 使用检查)
@@ -66,7 +65,7 @@ source "$(dirname "$0")/lib/shell/common.sh"
 | 引用方 | 引用方式 | 示例 |
 |--------|---------|------|
 | **Makefile** (根) | target 调用 | `scripts/debt-audit.sh`, `scripts/x1-x4-check.sh` |
-| **CI workflows** | `.github/workflows/*.yml` | `governance-check.yml` 引用 18 个 `check-*.py` |
+| **CI workflows** | `.github/workflows/*.yml` | `governance-check.yml` 调用治理检查脚本 |
 | **.omo/_truth/** | 注册表 entrypoint | `mutation-surfaces.yaml` 引用 `omo_worker.py` |
 | **.omo/standards/** | 文档引用 | `MCP_STANDARDS.md` 引用 `sop_check_format_version.py` |
 | **docs/** | cron 表 + 说明 | `ASYNC-BUS-CRON-HOOK-GOVERNANCE-DEEPDIVE.md` cron 调度表 |

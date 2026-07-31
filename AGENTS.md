@@ -1,7 +1,7 @@
 # AGENTS.md — omostation-scripts
 
 > Omostation 工作站脚本集合 (独立 git 子模块)
-> 顶层 66 个活跃脚本 + 5 个子目录。全量分类索引见 [INDEX.md](INDEX.md)。
+> 目录结构、脚本清单和分类以 [INDEX.md](INDEX.md) 为准。
 
 ## Quick Commands
 
@@ -15,7 +15,7 @@ cat INDEX.md
 # 本地 CI 冒烟 (含 lib/ 使用检查)
 bash ci_local.sh
 
-# lib/ 单元测试 (7 模块 105 tests)
+# lib/ 单元测试
 python3 -m pytest tests/lib/ -v
 ```
 
@@ -23,13 +23,13 @@ python3 -m pytest tests/lib/ -v
 
 ```
 scripts/
-├── lib/         ── 共享基础设施 (9 模块: bootstrap, paths, yaml_utils, cli, validators, ssot_checker, cost_tracker, shell/common.sh)
-├── tests/       ── 单元测试 (lib/ 7 模块 105 tests + omo/ 2 脚本)
-├── (顶层)      ── 66 个活跃脚本, 按命名前缀分类 (见 INDEX.md)
+├── lib/         ── 共享基础设施（模块清单见 INDEX.md）
+├── tests/       ── 单元测试（测试入口见本文件）
+├── (顶层)      ── 活跃脚本（按命名前缀分类，见 INDEX.md）
 ├── omo/        ── OMO 治理脚本 (governance-agent, omo_worker, x1/x2/x3 审计)
 ├── shell/      ── Shell 工具 (backup, restore, bridge install, watchdog)
 ├── install/    ── 安装与配置向导 (setup.sh)
-└── archive/    ── 已归档的历史/演示/废弃脚本 (29 个)
+└── archive/    ── 已归档的历史/演示/废弃脚本（清单见 INDEX.md）
 ```
 
 ## 共享基础设施 (lib/)
@@ -53,8 +53,8 @@ scripts/
 
 **脚本路径被以下位置硬编码引用，移动文件会 break CI**：
 
-- 根 `Makefile`: 13 个脚本 (`scripts/x1-x4-*.sh`, `scripts/debt-*.sh`, `scripts/sync_omo_state.py` 等)
-- `.github/workflows/governance-check.yml`: 18 个 `check-*.py` + `check-cross-deps.py` + `check-interfaces.py`
+- 根 `Makefile`: 通过 `scripts/` 路径调用治理与同步脚本
+- `.github/workflows/governance-check.yml`: 通过 `scripts/` 路径调用治理检查脚本
 - `.github/workflows/`: 其他 workflow 引用 `check-vault-paths.py`, `check-state-goals-alignment.py`, `validate_protocol_registry.py` 等
 - `.omo/_truth/registry/`: `mutation-surfaces.yaml`, `agent-clis.yaml`, `projects-capabilities.yaml` 等
 - `docs/ASYNC-BUS-CRON-HOOK-GOVERNANCE-DEEPDIVE.md`: OPC cron 调度表引用 `opc_*.py/sh`
