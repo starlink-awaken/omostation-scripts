@@ -74,6 +74,21 @@ fi
 "$SYNC_SCRIPT" 2>&1 | sed 's/^/[pre-push] /' >&2
 python3 "$REACH_SCRIPT" --source head --fetch 2>&1 | sed 's/^/[reachability] /' >&2
 
+# ── Bulk deletion submodule scan (兜底: 子模块最近 commit 是否含异常删除) ──
+# 防止子模块 hook 被绕过时, 批量删除仍能传播到远端
+BULK_DEL_SCRIPT="$ROOT/bin/gac/check-bulk-deletion.py"
+if [ -f "$BULK_DEL_SCRIPT" ]; then
+  python3 "$BULK_DEL_SCRIPT" --submodules 2>&1 | sed 's/^/[bulk-deletion] /' >&2
+  _bd_rc=${PIPESTATUS[0]}
+  if [ "$_bd_rc" -ne 0 ]; then
+    cat >&2 <<EOF
+[bulk-deletion] ❌ 子模块检测到可疑大批量删除, 拒绝 push.
+   如确属合法操作: BULK_DELETE_ACK=1 git push ...
+EOF
+    exit 1
+  fi
+fi
+
 # ── G-CONV.7 / ADR-0220 D4: escape-hatch allowlist for CI_LOCAL_SKIP ─
 # CI_LOCAL_SKIP=1 requires SWARM_ESCAPE_ID matching registry allowlist.
 if [ "${CI_LOCAL_SKIP:-}" = "1" ]; then

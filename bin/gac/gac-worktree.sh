@@ -44,7 +44,7 @@ validate_session() {
 # PASW: Per-Agent Submodule Worktree (ADR-0355) — 高冲突子模块 per-agent 独立 worktree
 # 设计文档: .omo/_knowledge/decisions/0355-pasw-submodule-isolation.md
 # 需要独立 worktree 隔离的高冲突子模块 (按冲突频率排序)
-ISOLATED_SUBS="projects/gbrain projects/cockpit projects/agora"
+ISOLATED_SUBS="projects/gbrain projects/cockpit projects/agora projects/aetherforge"
 # PASW: 子模块 worktree 存放路径 (root worktree 内)
 PASW_SUBTREE_DIR=".subtrees"
 # PASW: 过期 TTL (小时)

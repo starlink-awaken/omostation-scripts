@@ -65,7 +65,7 @@ fi
 # 高冲突子模块 (gbrain/cockpit/agora) 必须通过 .subtrees/ worktree 修改,
 # 不允许在 root 直接 git add projects/<sub> (gitlink 变更).
 # 合法流程: cd .subtrees/<sub> && git add . && git commit → bump-pointer
-PASW_ISOLATED="projects/gbrain projects/cockpit projects/agora"
+PASW_ISOLATED="projects/gbrain projects/cockpit projects/agora projects/aetherforge"
 for sub in $PASW_ISOLATED; do
   # 检查是否尝试在 root 直接 stage 子模块 gitlink 变更
   if git diff --cached --name-only | grep -qxF "$sub"; then
@@ -107,6 +107,28 @@ if git status --short -- ".omo/debt/" | grep -q "^.D"; then
   git status --short -- ".omo/debt/" | grep "^.D" | sed 's/^/[debt-guard]   /' >&2
   echo "[debt-guard] ⛔ 拒绝提交 — 债务文件只能通过 omo debt CLI 管理" >&2
   exit 1
+fi
+
+# ── Bulk deletion gate (双指标: 文件数≥50% AND 行数≥1000) ──
+# 防止 partial worktree → git add -A → 360 文件误删 (AetherForge 事件)
+# 逃逸: BULK_DELETE_ACK=1
+if [ -f "$ROOT/bin/gac/check-bulk-deletion.py" ]; then
+  python3 "$ROOT/bin/gac/check-bulk-deletion.py" 2>&1 | sed 's/^/[bulk-deletion] /' >&2
+  _bd_rc=${PIPESTATUS[0]}
+  if [ "$_bd_rc" -ne 0 ]; then
+    exit 1
+  fi
+fi
+
+# ── Submodule pointer regression check (指针单调性) ──
+# 防止子模块指针回退到更早的 commit (损坏 SHA 被重新确认)
+# 逃逸: POINTER_REGRESSION_ACK=1
+if [ -f "$ROOT/bin/gac/check-pointer-regression.py" ]; then
+  python3 "$ROOT/bin/gac/check-pointer-regression.py" 2>&1 | sed 's/^/[pointer-regression] /' >&2
+  _pr_rc=${PIPESTATUS[0]}
+  if [ "$_pr_rc" -ne 0 ]; then
+    exit 1
+  fi
 fi
 
 exit 0
