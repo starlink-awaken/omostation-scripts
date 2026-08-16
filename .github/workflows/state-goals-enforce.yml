@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - name: Init scripts submodule
         # 脚本在 scripts 子模块 (public). 不用 recursive — 避开 private 子模块.

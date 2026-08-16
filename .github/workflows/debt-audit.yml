@@ -21,7 +21,7 @@ jobs:
         with:
           # 显式 init scripts (debt-audit.sh 核心审计), 不 recursive (避免撞 private 子模块)
           submodules: false
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - name: Init scripts submodule
         run: git submodule update --init scripts
