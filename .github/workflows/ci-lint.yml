@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - name: Download actionlint (binary, latest stable)
         id: get_actionlint
@@ -64,7 +64,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - uses: actions/setup-python@v5
         with:
@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - name: Install shellcheck
         run: |
@@ -124,7 +124,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - uses: actions/setup-python@v5
         with:
@@ -149,7 +149,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - uses: actions/setup-python@v5
         with:
@@ -186,7 +186,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - uses: actions/setup-python@v5
         with:
@@ -209,7 +209,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
         continue-on-error: true
       - uses: actions/setup-python@v5
         with:
