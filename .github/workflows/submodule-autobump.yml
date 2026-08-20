@@ -34,6 +34,8 @@ jobs:
       - name: Apply bump and create PR
         if: steps.check.outputs.has_changes == 'true'
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           bash bin/ssot/submodule-autobump.sh
           BRANCH="auto/submodule-bump-$(date +%Y%m%d%H%M)"
           git checkout -b "$BRANCH"
