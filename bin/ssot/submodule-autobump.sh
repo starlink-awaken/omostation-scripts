@@ -67,7 +67,9 @@ echo "需要 bump: $bumped 个子模块"
 
 if [ "$DRY_RUN" = false ] && [ "$CHECK_ONLY" = false ] && [ "$bumped" -gt 0 ]; then
   # 提交并推送
-  git add -- ':!.projects' .
+  # 注意: 不能在这里 `git add .` —— 子模块已 checkout 到工作树时, git add 会用
+  # 工作树的旧指针覆盖上方 update-index 写入的新指针, 导致 nothing to commit.
+  # update-index 已把新指针写入 index, 直接 commit 即可 (与 root 版 submodule-autobump.sh 一致).
   git commit -m "chore: auto-bump $bumped submodule pointers to latest main"
   echo "✅ 已提交 bump"
 fi
