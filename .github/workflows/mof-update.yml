@@ -8,15 +8,7 @@ name: mof-update (L0 周期化 + 硬编码扫描)
 # 关联设计: .omo/_knowledge/management/x-plane-architecture-design-v1.md §9
 # SSOT 治理: .omo/_knowledge/management/vault-paths-ssot-design.md
 
-on:
-  schedule:
-    - cron: "0 6 * * 1"   # 每周一 06:00
-  workflow_dispatch:       # 允许手动触发
-
-permissions:
-  contents: read
-  issues: write            # 失败时自动开 issue
-
+on: []
 jobs:
   mof-update:
     name: L0 知识萃取周期化

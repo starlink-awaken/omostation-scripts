@@ -1,18 +1,6 @@
 name: Debt Audit
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  schedule:
-    # 每周一早上 9 点运行
-    - cron: '0 9 * * 1'
-
-permissions:
-  contents: read
-  pull-requests: write   # comment on PR (GITHUB_TOKEN 默认只读致 createComment 403)
-
+on: []
 jobs:
   debt-audit:
     runs-on: ubuntu-latest
