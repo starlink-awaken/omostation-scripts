@@ -75,7 +75,10 @@ jobs:
             fi
             if [ "$head_sha" = "$wt_sha" ]; then
               echo "= $sm: 无变化 (skip)"
-            elif git merge-base --is-ancestor "$head_sha" "$wt_sha" 2>/dev/null; then
+            # 在主仓库 git merge-base 找不到子模块 commit (对象在 .git/modules/<sm>/
+            # object store, 不在 superproject), 会 fatal → 误判降级跳过. 改为在子
+            # 模块内判定 ancestry (auto-bump 只升不降防覆盖手动 bump).
+            elif git -C "$sm" merge-base --is-ancestor "$head_sha" "$wt_sha" 2>/dev/null; then
               echo "⬆ $sm: 升级 ${head_sha:0:8} → ${wt_sha:0:8} (bump)"
               git add "$sm"
             else
