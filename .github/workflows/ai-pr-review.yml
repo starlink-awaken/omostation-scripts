@@ -5,10 +5,7 @@ name: AI PR Review
 # 详见 docs/AUTO-PR-REVIEW-ISA.md ISC-1..8.
 # 分工: GaC gate (规则兜底) + AI (语义补充). AI 不懂的规则 gate 懂.
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    # 不设 paths — 所有 PR 都过语义 review (GaC gate 管 paths 过滤的规则层)
+on: []  # archived - scripts repo deprecated
 
 permissions:
   contents: read

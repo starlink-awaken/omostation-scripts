@@ -1,6 +1,5 @@
 name: gBrain CI (no-op — CI lives in gbrain repo)
-on:
-  workflow_dispatch: {}
+on: []  # archived - scripts repo deprecated
 jobs:
   test:
     runs-on: ubuntu-latest

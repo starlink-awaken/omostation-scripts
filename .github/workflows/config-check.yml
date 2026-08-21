@@ -1,7 +1,5 @@
 name: Config Check
-on:
-  push:
-    paths: ["projects/kairon/packages/agora/agora-services.json", "projects/agora/src/agora-services.json"]
+on: []  # archived - scripts repo deprecated
 jobs:
   check:
     runs-on: ubuntu-latest

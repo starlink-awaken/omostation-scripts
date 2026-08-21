@@ -1,0 +1,13 @@
+name: Submodule Bump Main PR
+
+on: []  # archived - scripts repo deprecated
+
+jobs:
+  trigger-bump:
+    uses: starlink-awaken/omostation/.github/workflows/reusable-submodule-bump-pr.yml@main
+    with:
+      submodule_path: scripts
+      target_sha: ${{ github.event.inputs.target_sha }}
+      release_tag: ${{ github.event.release.tag_name }}
+    secrets:
+      bot_token: ${{ secrets.OMOSTATION_BOT_TOKEN }}

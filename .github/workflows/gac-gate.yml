@@ -3,16 +3,7 @@ name: gac-gate
 # PR: 始终 strict（合并前彻底验）。
 # push main: 始终跑（防「非 governance 路径合入后 tip 不重跑」假绿）。
 # push 其它分支: 仍用 paths 限流，避免 feature 分支每次 push 全套。
-on:
-  push:
-    branches:
-      - main
-    # non-main feature branches keep path filter via separate workflow path below
-  pull_request:
-  workflow_dispatch:
-  # feature branch path-filtered runs (not main)
-  # implemented as additional push without branch filter + job if:
-  # keep simple: always on main + all PRs is enough for protection.
+on: []  # archived - scripts repo deprecated
 
 jobs:
   gac-gate:

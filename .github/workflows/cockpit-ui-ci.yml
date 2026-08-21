@@ -3,8 +3,7 @@ name: cockpit-ui-ci
 # CI cannot checkout it from the root repo. This workflow runs in the
 # cockpit-ui repo itself (omostation-hermes-console) via its own .github/workflows/.
 # This root workflow is disabled to avoid false failures.
-on:
-  workflow_dispatch: {}
+on: []  # archived - scripts repo deprecated
 
 jobs:
   test:
