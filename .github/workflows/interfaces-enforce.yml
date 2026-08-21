@@ -5,7 +5,7 @@ name: interfaces-enforce
 # 覆盖; 接口契约检查在仓库中未实现 (仅 .omo/standards/interface_contract.md 文档).
 # 禁用触发器 (保留定义以便未来补实现后恢复). 如需恢复, 将 on: [] 改为
 # on: [push, pull_request] 并指向真实脚本.
-on: []
+on: []  # archived - scripts repo deprecated
 
 jobs:
   check:

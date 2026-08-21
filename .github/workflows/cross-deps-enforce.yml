@@ -5,7 +5,7 @@ name: cross-deps-enforce
 # 分层依赖检查 (L3→L2→L1→L0) 覆盖 cockpit→kairon / agora→cockpit / ecos→kairon
 # / omo→kairon 等层间 import 规则; cockpit→runtime 是设计依赖 (agent_runtime
 # 桥接) 由 layer-contract 豁免.
-on: [push, pull_request]
+on: []  # archived - scripts repo deprecated
 
 jobs:
   check:

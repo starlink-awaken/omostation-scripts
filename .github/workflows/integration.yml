@@ -1,5 +1,5 @@
 name: Integration Tests
-on: [push, pull_request]
+on: []  # archived - scripts repo deprecated
 jobs:
   integration:
     runs-on: ubuntu-latest

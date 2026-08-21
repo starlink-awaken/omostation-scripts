@@ -3,11 +3,7 @@ name: c2g-gc-weekly
 # 关联: Plans/c2g-enchanted-coral.md §3.2
 # 关联目录: runtime/sandbox/pitches/ (扫描) + runtime/sandbox/decayed/ (归档)
 
-on:
-  schedule:
-    # 每周一 9:00 UTC (北京时间 17:00, 工作日傍晚收口)
-    - cron: '0 9 * * 1'
-  workflow_dispatch:  # 支持手动触发
+on: []  # archived - scripts repo deprecated
 
 permissions:
   contents: write

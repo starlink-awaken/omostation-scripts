@@ -1,11 +1,5 @@
 name: Cockpit CI
-on:
-  push:
-    branches: [main]
-    paths: ['projects/cockpit/**', '.github/workflows/cockpit-ci.yml']
-  pull_request:
-    branches: [main]
-    paths: ['projects/cockpit/**', '.github/workflows/cockpit-ci.yml']
+on: []  # archived - scripts repo deprecated
 jobs:
   test:
     runs-on: ubuntu-latest

@@ -3,11 +3,7 @@ name: c2g-radar-daily
 # 关联: Plans/c2g-enchanted-coral.md §3.1
 # 关联 SSOT: .omo/state/health.yaml (生成) + .omo/state/system.yaml (同步)
 
-on:
-  schedule:
-    # 每日 8:00 UTC (北京时间 16:00, 工作日下午心跳)
-    - cron: '0 8 * * *'
-  workflow_dispatch:  # 支持手动触发
+on: []  # archived - scripts repo deprecated
 
 permissions:
   contents: write

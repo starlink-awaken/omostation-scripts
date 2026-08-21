@@ -1,12 +1,6 @@
 name: kairon-ci
 # kairon monorepo (16 包). make test 循环 pytest + make typecheck-gate mypy 回归门.
-on:
-  push:
-    branches: [main]
-    paths: ['projects/kairon/**', '.github/workflows/kairon-ci.yml']
-  pull_request:
-    branches: [main]
-    paths: ['projects/kairon/**', '.github/workflows/kairon-ci.yml']
+on: []  # archived - scripts repo deprecated
 
 jobs:
   test:

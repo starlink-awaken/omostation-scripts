@@ -5,31 +5,7 @@ name: CI Lint (workflows + shell)
 # 触发: push/PR + 周一凌晨 06:00 (周巡, 对齐 omostation-governance 节奏)
 # 失败即 fail-fast, 保护 L0/CI 质量不漂移
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/**"
-      - "scripts/**"
-      - ".pre-commit-config.yaml"
-      - "bin/cockpit/**"
-      - "docs/generated/capability-registry.yaml"
-      - "projects/agora/etc/bos-services.yaml"
-      - "projects/cockpit/src/cockpit/cli.py"
-  pull_request:
-    branches: [main]
-    paths:
-      - ".github/workflows/**"
-      - "scripts/**"
-      - ".pre-commit-config.yaml"
-      - "bin/cockpit/**"
-      - "docs/generated/capability-registry.yaml"
-      - "projects/agora/etc/bos-services.yaml"
-      - "projects/cockpit/src/cockpit/cli.py"
-  schedule:
-    # 周一 06:00 UTC ≈ 北京时间 14:00, 早于 omostation-governance (UTC 07:00+)
-    # 抢在治理扫描前发现 drift
-    - cron: "0 6 * * 1"
+on: []  # archived - scripts repo deprecated
 
 jobs:
   # ── 1. actionlint — GitHub Actions 工作流静态检查 ─────────────────
