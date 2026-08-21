@@ -33,6 +33,13 @@ jobs:
 
       - name: Update submodules to latest remote HEAD
         run: |
+          # Ensure each submodule has refs/remotes/origin/HEAD before update --remote:
+          # submodules without a `branch =` in .gitmodules resolve the default via
+          # origin/HEAD, and when that ref is missing update --remote fails with
+          # "Unable to find refs/remotes/origin/HEAD" and skips the submodule —
+          # leaving projects/* pointers stale (only the self-referencing `scripts`
+          # submodule advanced). Point origin/HEAD at the main remote branch.
+          git submodule foreach 'git fetch origin main --quiet 2>/dev/null || true; git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main 2>/dev/null || true'
           git submodule update --remote --recursive
           if [ -z "$(git status --porcelain)" ]; then
             echo "No submodules need updating."
