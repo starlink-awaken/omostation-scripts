@@ -5,8 +5,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 echo "[1/5] Syncing .omo state"
-# CI 环境无全局 pyyaml, 必须用 uv run --with pyyaml 包裹 (scripts/lib/yaml_utils.py import yaml)
-uv run --project projects/omo --with pyyaml python3 scripts/sync_omo_state.py --omo-dir .omo
+# scripts/sync_omo_state.py 已迁移为 omo CLI 的 state sync 子命令 (CLAUDE.md §3:
+# Runtime projection refresh 用 `omo state sync`, 不跑 ad-hoc generator scripts).
+# state sync 会同步 runtime projections + 重算 task 计数 (含 --omo-dir .omo 原语义).
+uv run --project projects/omo --with pyyaml python3 -m omo.omo_state sync
 
 echo "[2/5] Running governance lint gates"
 pushd projects/omo >/dev/null
