@@ -1,19 +1,19 @@
 name: interfaces-enforce
-# P47+: 接口契约 + 端口冲突 enforce. 复用 scripts/check-interfaces.py.
-on: [push, pull_request]
+# P47+: 接口契约 + 端口冲突 enforce.
+# 原引用 scripts/check-interfaces.py — 该文件在仓库中从未存在, 每次 push/PR 恒红.
+# 端口冲突 enforce 已由 port-registry-enforce.yml (bin/ssot/check-hardcoded-ports.py)
+# 覆盖; 接口契约检查在仓库中未实现 (仅 .omo/standards/interface_contract.md 文档).
+# 禁用触发器 (保留定义以便未来补实现后恢复). 如需恢复, 将 on: [] 改为
+# on: [push, pull_request] 并指向真实脚本.
+on: []
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          # 显式 init scripts, 不 recursive (避免撞 private 子模块)
-          submodules: false
-          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
-        continue-on-error: true
-      - name: Init scripts submodule
-        run: git submodule update --init scripts
       - uses: actions/setup-python@v5
         with: {python-version: "3.13"}
       - run: pip install pyyaml
-      - run: python3 scripts/check-interfaces.py
+      - name: Interface contract check (not implemented)
+        run: echo "interface contract check not implemented; disabled pending real script"

@@ -1,7 +1,10 @@
 name: cross-deps-enforce
 # P47+: 跨层 import 违规 enforce (防回归).
-# 复用 scripts/check-cross-deps.py. 规则: cockpit→kairon / agora→cockpit /
-# ecos→kairon / omo→kairon. cockpit→runtime 是设计依赖 (agent_runtime 桥接) 不拦.
+# 复用 bin/layer-dependency-check.py (docs/layer-contract.yaml). 原引用的
+# scripts/check-cross-deps.py 在仓库中从未存在 → 每次 push/PR 恒红.
+# 分层依赖检查 (L3→L2→L1→L0) 覆盖 cockpit→kairon / agora→cockpit / ecos→kairon
+# / omo→kairon 等层间 import 规则; cockpit→runtime 是设计依赖 (agent_runtime
+# 桥接) 由 layer-contract 豁免.
 on: [push, pull_request]
 
 jobs:
@@ -10,13 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.OMOSTATION_BOT_TOKEN }}
-        continue-on-error: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - run: pip install pyyaml
-      - name: Run cross-deps check
-        run: python3 scripts/check-cross-deps.py
+      - name: Run cross-layer dependency check
+        run: python3 bin/layer-dependency-check.py
