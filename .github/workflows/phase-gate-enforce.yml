@@ -1,11 +1,7 @@
 name: phase-gate-enforce
 # ADR-0223: hard-block PRs that touch locked phase paths without unlock verdict.
 # Minimal deps (stdlib + PyYAML) — no m1-closeout-report import (anti self-blind, ADR-0202 D1).
-on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-  workflow_dispatch:
-
+on: []
 jobs:
   phase-gate:
     name: phase-gate
